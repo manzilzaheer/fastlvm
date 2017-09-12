@@ -3,17 +3,19 @@ import pickle
 import numpy as np
 import scipy as sc
 from tqdm import trange
-from fastlvm import Search, Clustering, GMM, LDA, GLDA
+from fastlvm import CoverTree, KMeans, GMM, LDA, GLDA
 from fastlvm import read_corpus
 from sklearn.neighbors import NearestNeighbors
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans as sKMeans
 from sklearn.mixture import GaussianMixture
+
+import pdb
 
 gt = time.time
 np.random.seed(seed=3)
 
 print('Generate random points')
-N=100
+N=10000
 K=100
 D=1000
 means = 20*np.random.rand(K,D) - 10
@@ -32,64 +34,66 @@ y = np.require(y, requirements=['A', 'C', 'O', 'W'])
 
 print('======== Checks for Search ==========')
 
-t = gt()
-ct = Search.from_matrix(x)
-b_t = gt() - t
-#ct.display()
-print("Building time:", b_t, "seconds")
+#t = gt()
+#ct = CoverTree.from_matrix(x)
+#b_t = gt() - t
+##ct.display()
+#print("Building time:", b_t, "seconds")
     
-print("Test covering: ", ct.test_covering())
+#print("Test covering: ", ct.test_covering())
 
-print('Test Nearest Neighbour: ')
-t = gt()
-a = ct.NearestNeighbour(y)
-b_t = gt() - t
-print("Query time:", b_t, "seconds")
-nbrs = NearestNeighbors(n_neighbors=1, algorithm='brute').fit(x)
-distances, indices = nbrs.kneighbors(y)
-b = np.squeeze(x[indices])
-if np.all(a==b):
-    print("Test for Nearest Neighbour passed")
-else:
-    print("Test for Nearest Neighbour failed")
-print()
+#print('Test Nearest Neighbour: ')
+#t = gt()
+#a = ct.NearestNeighbour(y)
+#b_t = gt() - t
+#print("Query time:", b_t, "seconds")
+#nbrs = NearestNeighbors(n_neighbors=1, algorithm='brute').fit(x)
+#distances, indices = nbrs.kneighbors(y)
+#b = np.squeeze(x[indices])
+#if np.all(a==b):
+#    print("Test for Nearest Neighbour passed")
+#else:
+#    print("Test for Nearest Neighbour failed")
+#print()
 
-print('Test k-Nearest Neighbours (k=3): ')
-t = gt()
-a = ct.kNearestNeighbours(y,3)
-b_t = gt() - t
-print("Query time:", b_t, "seconds")
-nbrs = NearestNeighbors(n_neighbors=3, algorithm='brute').fit(x)
-distances, indices = nbrs.kneighbors(y)
-if np.all(a==x[indices]):
-    print("Test for k-Nearest Neighbours passed")
-else:
-    print("Test for k-Nearest Neighbours failed")
-print()
+#pdb.set_trace()
 
-print('Test pickling: ')
+#print('Test k-Nearest Neighbours (k=3): ')
+#t = gt()
+#a = ct.kNearestNeighbours(y,3)
+#b_t = gt() - t
+#print("Query time:", b_t, "seconds")
+#nbrs = NearestNeighbors(n_neighbors=3, algorithm='brute').fit(x)
+#distances, indices = nbrs.kneighbors(y)
+#if np.all(a==x[indices]):
+#    print("Test for k-Nearest Neighbours passed")
+#else:
+#    print("Test for k-Nearest Neighbours failed")
+#print()
+#
+#print('Test pickling: ')
 #s = ct.serialize()
 #f_string = pickle.dumps(ct, protocol=4)
 #print('string got', len(f_string))
-with open('tree.dat', 'wb') as f:
-    pickle.dump(ct, f, protocol=4)
-ct = None
-#ct_new = Search.from_string(s)
+#with open('tree.dat', 'wb') as f:
+#    pickle.dump(ct, f, protocol=4)
+#ct = None
+#ct_new = CoverTree.from_string(s)
 #ct_new = pickle.loads(f_string)
-with open('tree.dat', 'rb') as f:
-   ct_new =  pickle.load(f)
+#with open('tree.dat', 'rb') as f:
+#   ct_new =  pickle.load(f)
 #ct_new.display()
-print("Tree reconstructed")
-a = ct_new.kNearestNeighbours(y,3)
-if np.all(a==x[indices]):
-    print("Test for pickling passed")
-else:
-    print("Test for pickling failed")
+#print("Tree reconstructed")
+#a = ct_new.kNearestNeighbours(y,3)
+#if np.all(a==x[indices]):
+#    print("Test for pickling passed")
+#else:
+#    print("Test for pickling failed")
     
 print('======== Checks for Clustering ==========')
 print('Building clustering data structures')
-skm = KMeans(K, 'k-means++', 1, 10, verbose=0)
-ctm = Clustering.init(K, 10, 'covertree', x)
+skm = sKMeans(K, 'k-means++', 1, 10, verbose=0)
+ctm = KMeans.init(K, 10, 'covertree', x)
 
 t = gt()
 ct = ctm.fit(x,y)
@@ -104,6 +108,8 @@ print('Canopy score: ', a)
 print('Sklearn score: ', b)
 print('Difference: ', a-b)
 print()
+
+pdb.set_trace()
 
 print('Cluster centres')
 cc = ctm.get_centers()

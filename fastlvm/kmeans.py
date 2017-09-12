@@ -18,8 +18,8 @@ def init_kmeanspp(k, points):
     return seeds
     
 
-class Clustering(object):
-    """CoverTree Class"""
+class KMeans(object):
+    """KMeans Class"""
     def __init__(self, this):
         self.this = this
 
@@ -29,7 +29,7 @@ class Clustering(object):
         
     def __reduce__(self):
         buff = self.serialize()
-        return (Clustering.from_string, (buff,))
+        return (KMeans.from_string, (buff,))
 
     @classmethod
     def init(cls, k, iters, initial_centres, data=None):

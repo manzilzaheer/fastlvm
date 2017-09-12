@@ -1,6 +1,6 @@
 import covertreec
 
-class Search(object):
+class CoverTree(object):
     """CoverTree Class"""
     def __init__(self, this):
         self.this = this
@@ -11,7 +11,7 @@ class Search(object):
         
     def __reduce__(self):
         buff = self.serialize()
-        return (Search.from_string, (buff,))
+        return (CoverTree.from_string, (buff,))
 
     @classmethod
     def from_matrix(cls, points, trunc=-1):
