@@ -53,6 +53,7 @@ utils_module = Extension('utilsc',
 setup ( name = 'fastlvm',
     version = '1.0',
     description = 'fastlvm -- fast search, clustering, and mixture modelling',
+    install_requires=['numpy>=1.13.1', 'scipy>=0.17', 'sklearn>=0.18'],
     ext_modules = [ covertreec_module, kmeans_module, gmm_module, lda_module, hdp_module, glda_module, utils_module ],
     packages = ['fastlvm']
 )
