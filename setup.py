@@ -4,6 +4,14 @@ import sys
 import pip
 pip.main(['install', '--user', 'numpy'])
 
+home_folder = os.path.expanduser("~")
+user_site_packages_folder = "{}/.local/lib/python2.7/site-packages".format(home_folder)
+if user_site_packages_folder not in sys.path:
+    sys.path.append(user_site_packages_folder)
+user_site_packages_folder = "{}/.local/lib/python3.5/site-packages".format(home_folder)
+if user_site_packages_folder not in sys.path:
+    sys.path.append(user_site_packages_folder)
+
 import numpy as np
 
 covertreec_module = Extension('covertreec',
