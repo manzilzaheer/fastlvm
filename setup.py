@@ -1,5 +1,6 @@
 from distutils.core import setup, Extension
 import sys
+import os
 
 import pip
 pip.main(['install', '--user', 'numpy'])
