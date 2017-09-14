@@ -1,4 +1,9 @@
 from distutils.core import setup, Extension
+import sys
+
+import pip
+pip.main(['install', '--user', 'numpy'])
+
 import numpy as np
 
 covertreec_module = Extension('covertreec',
