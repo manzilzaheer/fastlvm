@@ -3,8 +3,8 @@ from setuptools.command.build_ext import build_ext as _build_ext
 import sys
 
 import pip
-pip.main(['install', 'git@gitlab.datadrivendiscovery.org:d3m/d3m.git'])
-pip.main(['install', 'git@gitlab.datadrivendiscovery.org:d3m/primitive-interfaces.git'])
+pip.main(['install', 'git+ssh://git@gitlab.datadrivendiscovery.org/d3m/d3m.git'])
+pip.main(['install', 'git+ssh://git@gitlab.datadrivendiscovery.org/d3m/primitive-interfaces.git'])
 
 PACKAGE_NAME = 'fastlvm'
 MINIMUM_PYTHON_VERSION = 3, 5
