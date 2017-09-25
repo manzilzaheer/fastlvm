@@ -606,7 +606,7 @@ namespace utils
 
         int compute()
         {
-            if (right - left < 10000)
+            if (right - left < 5000000)
             {
                 run();
                 return 0;

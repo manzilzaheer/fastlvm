@@ -2,7 +2,17 @@ import gmmc
 import numpy as np
 import pdb
     
-def init_covertree(k, points):
+from typing import NamedTuple
+from typing import Union
+from primitive_interfaces.unsupervised_learning import UnsupervisedLearnerPrimitiveBase
+
+Inputs = np.ndarray  # type: np.ndarray
+Outputs = np.ndarray  # type: np.ndarray
+Params = NamedTuple('Params', [
+    ('mixture_parameters', np.ndarray),  # Byte stream represening coordinates of cluster centers.
+])
+
+def init_covertree(k: int, points: Inputs) -> Outputs:
     import covertreec
     trunc = 3
     ptr = covertreec.new(points, trunc)
@@ -11,28 +21,46 @@ def init_covertree(k, points):
     covertreec.delete(ptr)
     return seeds
     
-def init_kmeanspp(k, points):
+def init_kmeanspp(k: int, points: Inputs) -> Outputs:
     import utilsc
     seed_idx = utilsc.kmeanspp(k, points)
     seeds = points[seed_idx]
     return seeds
     
 
-class GMM(object):
-    """CoverTree Class"""
-    def __init__(self, this):
-        self.this = this
+class GMM(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
+    """
+    This class provides functionality for unsupervised inference on Gaussian mixture model, which is a probabilistic model that assumes all the data points are generated from a mixture of a finite number of Gaussian distributions with unknown parameters. It can be viewed as a generalization of the K-Means clustering to incorporate information about the covariance structure of the data. Standard packages, like those in scikit learn run on a single machine and often only on one thread. Whereas our underlying C++ implementation can be distributed to run on multiple machines. To enable the distribution through python interface is work in progress. In this class, we implement inference on (Bayesian) Gaussian mixture models using Canopy algorithm. The API is similar to sklearn.mixture.GaussianMixture. The class is pickle-able.
+    """
 
-    def __del__(self):
-        print("Destructor called!")
-        gmmc.delete(self.this)
-        
-    def __reduce__(self):
-        buff = self.serialize()
-        return (GMM.from_string, (buff,))
+    __author__ = 'CMU'
+    __metadata__ = {
+        "common_name": "Gaussian Mixture Models",
+        "algorithm_type": ["Bayesian","Clustering","Probabilistic Graphical Models"],
+        "handles_classification": False,
+        "handles_regression": False,
+        "handles_multiclass": False,
+        "handles_multilabel": False,
+        "input_type": ["DENSE"],
+        "output_type": ["PREDICTIONS"],
+        "schema_version": 1.0,
+        "compute_resources": {
+            "sample_size": [],
+            "sample_unit": [],
+            "disk_per_node": [],
+            "expected_running_time": [],
+            "gpus_per_node": [],
+            "cores_per_node": [],
+            "mem_per_gpu": [],
+            "mem_per_node": [],
+            "num_nodes": [],
+        },
+    }
 
-    @classmethod
-    def init(cls, k, iters, initial_centres, data=None, initial_vars=None):
+    def __init__(self, *, k: int = 10, iters: int = 100, initial_centres: Union[str, np.ndarray] = 'covertree', data: Union[None, np.ndarray] = None, initial_vars: Union[None, np.ndarray] = None) -> None:
+        super(GMM, self).__init__()
+        self.this = None
+
         if initial_centres == 'random':
             if data is None:
                 raise ValueError('Must provide data when using random')
@@ -69,25 +97,143 @@ class GMM(object):
         else:
             raise NotImplementedError('This type of initial vars is not implemented')
 
-        ptr = gmmc.new(k, iters, initial_centres, initial_vars)
-        return cls(ptr)
-        
-    @classmethod
-    def from_string(cls, buff):
-        ptr = gmmc.deserialize(buff)
-        return cls(ptr)
-        
-    def fit(self, trngpoints, testpoints):
-        return gmmc.fit(self.this, trngpoints, testpoints)
-        
-    def evaluate(self, points):
-        return gmmc.evaluate(self.this, points)
+        self.this = gmmc.new(k, iters, initial_centres, initial_vars)
+        self.training_inputs = None  # type: Inputs
+        self.validation_inputes = None # type: Inputs
+        self.fitted = False
 
-    def predict(self, points):
-        return gmmc.predict(self.this, points)
+    def __del__(self) -> None:
+        if self.this is not None:
+            gmmc.delete(self.this)
 
-    def get_centers(self):
+    def set_training_data(self, *, training_inputs: Inputs, validation_inputs: Inputs = None) -> None:
+        """
+        Sets training data for GMM.
+
+        Parameters
+        ----------
+        training_inputs : Inputs
+            A NxD matrix of data points for training.
+        validation_inputs : Inputs
+            A N'xD matrix of data points for validaton.
+        """
+
+        self.training_inputs = training_inputs
+        self.validation_inputes = validation_inputs
+        self.fitted = False
+
+    
+    def fit(self) -> None:
+        """
+        Inference on the Gaussian mixture model
+        """
+        if self.fitted:
+            return
+
+        if self.training_inputs is None:
+            raise ValueError("Missing training data.")
+
+        gmmc.fit(self.this, self.training_inputs, self.validation_inputes)
+        self.fitted = True
+
+    def get_call_metadata(self) -> bool:
+        """
+        Returns metadata about the last ``fit`` call if it succeeded
+
+        Returns
+        -------
+        Status : bool
+            True/false status of fitting.
+
+        """
+        return self.fitted
+        
+    def produce(self, *, inputs: Inputs) -> Outputs:
+        """
+        Finds the closest cluster for the given set of test points using the learned model.
+
+        Parameters
+        ----------
+        inputs : Inputs
+            A NxD matrix of data points.
+
+        Returns
+        -------
+        Outputs
+            The index of the cluster each sample belongs to.
+
+        """
+        return gmmc.predict(self.this, inputs)
+
+    def evaluate(self, *, inputs: Inputs) -> float:
+        """
+        Finds the score of learned model on a set of test points
+        
+        Parameters
+        ----------
+        inputs : Inputs
+            A NxD matrix of data points.
+
+        Returns
+        -------
+        score : float
+            The log-likelihood on the supplied points.
+        """
+        return gmmc.evaluate(self.this, inputs)
+ 
+    def get_centers(self) -> Outputs:
+        """
+        Get current cluster means and variances for this model.
+
+        Returns
+        ----------
+        means : numpy.ndarray
+            A KxD matrix of cluster means.
+        vars : numpy.ndarray
+            A KxD matrix of cluster variances.
+        """
+
         return gmmc.centers(self.this)
-        
-    def serialize(self):
-        return gmmc.serialize(self.this)
+    
+    def get_params(self) -> Params:
+        """
+        Get parameters of GMM.
+
+        Parameters are basically the mixture parameters (mean and variance) in byte stream.
+
+        Returns
+        ----------
+        params : Params
+            A named tuple of parameters.
+        """
+
+        return Params(mixture_parameters=gmmc.serialize(self.this))
+
+    def set_params(self, *, params: Params) -> None:
+        """
+        Set parameters of GMM.
+
+        Parameters are basically the mixture parameters (mean and variance) in byte stream.
+
+        Parameters
+        ----------
+        params : Params
+            A named tuple of parameters.
+        """
+        self.this = gmmc.deserialize(params.mixture_parameters)
+
+    def set_random_seed(self, *, seed: int) -> None:
+        """
+        NOT SUPPORTED YET
+        Sets a random seed for all operations from now on inside the primitive.
+
+        By default it sets numpy's and Python's random seed.
+
+        Parameters
+        ----------
+        seed : int
+            A random seed to use.
+        """
+
+        raise NotImplementedError("Not supported yet")
+

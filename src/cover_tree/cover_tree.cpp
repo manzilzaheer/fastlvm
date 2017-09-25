@@ -969,7 +969,7 @@ CoverTree::CoverTree(const Eigen::Map<Eigen::MatrixXd>& pMatrix, int truncateArg
     std::iota(std::begin(idx), std::end(idx), 0);
     auto comp_x = [&dists](size_t a, size_t b) { return dists[a] > dists[b]; };
     std::sort(std::begin(idx), std::end(idx), comp_x);
-    ///std::cout<<"Max distance: " << dists[idx[0]] << std::endl;
+    //std::cout<<"Max distance: " << dists[idx[0]] << std::endl;
     
     //4. Compute distance of every point from the mediod
     mx = pMatrix.col(idx[numPoints-1]);

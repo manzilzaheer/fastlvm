@@ -94,9 +94,10 @@ static PyObject *new_covertreec(PyObject *self, PyObject *args)
   if (!PyArg_ParseTuple(args,"O!i:new_covertreec", &PyArray_Type, &in_array, &trunc))
     return NULL;
 
+  std::cout<<"Hi reached: " << in_array << ", " << trunc <<std::endl;
   npy_intp numPoints = PyArray_DIM(in_array, 0);
   npy_intp numDims = PyArray_DIM(in_array, 1);
-  //std::cout<<numPoints<<", "<<numDims<<std::endl;
+  std::cout<<numPoints<<", "<<numDims<<std::endl;
   npy_intp idx[2] = {0, 0};
   double * fnp = reinterpret_cast< double * >( PyArray_GetPtr(in_array, idx) );
   Eigen::Map<Eigen::MatrixXd> pointMatrix(fnp, numDims, numPoints);
