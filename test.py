@@ -2,7 +2,6 @@ import time
 import pickle
 import numpy as np
 import scipy as sc
-from tqdm import trange
 from d3m.primitives.cmu.fastlvm import CoverTree, KMeans, GMM, LDA, GLDA
 from fastlvm import read_corpus
 from sklearn.neighbors import NearestNeighbors

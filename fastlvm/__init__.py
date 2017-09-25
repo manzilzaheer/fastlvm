@@ -14,7 +14,7 @@ __metadata__ = {
     "source_code": "https://github.com/manzilzaheer/fastlvm.git",
     "build": [{
         "type": "pip",
-        "package": "git+https://github.com/manzilzaheer/fastlvm.git"
+        "package": "git+https://github.com/manzilzaheer/fastlvm.git@d3m"
     }],
 }
 
