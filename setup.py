@@ -2,6 +2,9 @@ from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext as _build_ext
 import sys
 
+import pip
+pip.main(['install', 'git@gitlab.datadrivendiscovery.org:d3m/d3m.git'])
+pip.main(['install', 'git@gitlab.datadrivendiscovery.org:d3m/primitive-interfaces.git'])
 
 PACKAGE_NAME = 'fastlvm'
 MINIMUM_PYTHON_VERSION = 3, 5
@@ -22,15 +25,6 @@ class build_ext(_build_ext):
         import numpy
         self.include_dirs.append(numpy.get_include())
 
-#import pip
-#pip.main(['install', '--user', 'numpy'])
-
-#home_folder = os.path.expanduser("~")
-#user_site_packages_folder = "{0}/.local/lib/python{1}.{2}/site-packages".format(home_folder, sys.version_info[0], sys.version_info[1])
-#if user_site_packages_folder not in sys.path:
-#    sys.path.append(user_site_packages_folder)
-
-#import numpy as np
 
 covertreec_module = Extension('covertreec',
         sources = ['src/cover_tree/covertreecmodule.cxx', 'src/commons/utils.cpp',  'src/cover_tree/cover_tree.cpp'],
