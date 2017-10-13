@@ -205,12 +205,59 @@ namespace DataIO
             fin.close();
         }
         
+        corpus(const corpus& c) : _size(c._size), docs(new document[c._size])
+        {
+            std::copy(c.docs, c.docs + _size, docs); 
+        }
+
+        corpus(corpus&& c) : _size(0), docs(nullptr)
+        {
+            // Copy the data pointer and its length
+            _size = c._size;
+            docs = c.docs;
+  
+            // Release the data pointer from the source object
+            c._size = 0;  
+            c.docs = nullptr;
+        }
         ~corpus()
         {
             if (docs)
                 delete[] docs;
         }
         
+        /*** Copy/Move assignment operator ***/
+        corpus& operator=(const corpus& c)  
+        {  
+            if (this != &c)
+            {  
+                // Free the existing resource
+                if(docs) delete[] docs;
+  
+                _size = c._size;
+                docs = new document[_size];
+                std::copy(c.docs, c.docs + _size, docs);
+            }
+            return *this;
+        }
+
+        corpus& operator=(corpus&& c)  
+        {  
+            if (this != &c)
+            {  
+                // Free the existing resource
+                if(docs) delete[] docs;
+  
+                _size = c._size;
+                docs = c.docs;
+                
+                // Release the data pointer from the source 
+                c._size = 0;  
+                c.docs = nullptr;
+            }
+            return *this;
+        }
+
         /*** Iterator access ***/
         inline document* begin()
         {

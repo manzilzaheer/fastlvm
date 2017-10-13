@@ -10,16 +10,11 @@ int DataIO::corpus::from_python(PyObject* collection)
 {  
   // free existing memory
   if(docs)
-  {
-    for(const auto& d : *this)
-      d.~document();
-    operator delete[](static_cast<void*>(docs));
-  }
+    delete[] docs;
     
   // allocate memory for corpus
   _size = PyList_GET_SIZE(collection);
-  void* raw_memory = operator new[]( _size * sizeof( DataIO::document ) );
-  docs = (DataIO::document*) raw_memory;
+  docs = new DataIO::document[_size];
   
   for(size_t i = 0; i < _size; ++i)
   {
@@ -29,7 +24,7 @@ int DataIO::corpus::from_python(PyObject* collection)
     if(PyArray_TYPE(npy_doc) != NPY_UINT32)
         throw std::runtime_error("Each document must a uint32 numpy array");
     unsigned* fnp = (unsigned*) PyArray_GETPTR1(npy_doc, 0);
-    new( &docs[i] )document(PyArray_SIZE(npy_doc), fnp);
+    docs[i].reassign(PyArray_SIZE(npy_doc), fnp);
   }
   
   return 0;

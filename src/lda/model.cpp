@@ -160,6 +160,7 @@ double model::fit(const DataIO::corpus& trngdata, const DataIO::corpus& testdata
             time_ellapsed.push_back(std::chrono::duration_cast<std::chrono::milliseconds>(tn - ts).count());
             likelihood.push_back(evaluate(testdata));
             std::cout << "Likelihood on held out points: " << likelihood.back() << " at time " << time_ellapsed.back() << std::endl;
+            std::cout << "at time: " <<  time_ellapsed.back() << std::endl;
         }
     }
 
@@ -267,10 +268,80 @@ double model::evaluate(const DataIO::corpus& testdata) const
     return sum.load(std::memory_order_relaxed)/tokens.load(std::memory_order_relaxed);
 }
 
-/*std::vector<unsigned> model::predict(const dataset& testdata) const
+DataIO::corpus model::predict(const DataIO::corpus& testdata) const
 {
-    return labels;
-}*/
+    DataIO::corpus result = testdata;
+    //std::cout << "Address of TestData: " << testdata.data() << std::endl;
+    //std::cout << "Address of First Document in TestData: " << testdata[0].data() << std::endl;
+    //std::cout << "Address of Copy: " << result.data() << std::endl;
+    //std::cout << "Address of First Document in Copy: " << result[0].data() << std::endl;
+    //std::cout << "TestData[0][0]: " << testdata[0][0] << std::endl;
+    //std::cout << "Copy[0][0]: " << result[0][0] << std::endl;
+    //result[0][0] += 1;
+    //std::cout << "TestData[0][0]: " << testdata[0][0] << std::endl;
+    //std::cout << "Copy[0][0]: " << result[0][0] << std::endl;
+
+    size_t M = testdata.size();
+    utils::parallel_block_for(0, M, [&](size_t start, size_t end)->void{
+        // thread local random number generator
+        xorshift128plus rng_;
+        // per-topic prior
+        double alphaK = alpha/K;
+        
+        unsigned* nd_m = new unsigned[K];
+        double* p = new double[K];
+        
+        for(size_t i = start; i < end; ++i)
+        {
+            const auto& doc = testdata[i];
+            auto& z = result[i];
+            size_t N = doc.size();
+        
+            //Initialize
+            std::fill(nd_m, nd_m + K, 0);
+            for (size_t j = 0; j < N; ++j)
+            {
+                //unsigned short topic = rng_.rand_k(K);
+                unsigned short topic = (i + rng_.rand_k((unsigned short) 15))%K;
+                z[j] = topic;
+                
+                // number of words in document i assigned to topic j
+                nd_m[topic] += 1;
+            }
+        
+            for(unsigned iter = 0; iter < 50; ++iter)
+            {
+                for(size_t j = 0; j < N; ++j)
+                {
+                    // remove z_i from the count variables
+                    unsigned short topic = z[j];
+                    nd_m[topic] -= 1;
+                
+                    // do multinomial sampling via cumulative method
+                    unsigned w = doc[j];
+                    unsigned ptr = w*K;
+                    double psum = 0;
+                    for (unsigned short k = 0; k < K; ++k)
+                    {
+                        psum += (nd_m[k] + alphaK) * p_wk[ptr+k];
+                        p[k] = psum;
+                    }
+
+                    // scaled sample because of unnormalized p[]
+                    double u = rng_.rand_double() * psum;
+                    topic = std::lower_bound(p, p + K, u) - p;
+
+                    // add newly estimated z_i to count variables
+                    nd_m[topic] += 1;
+                    z[j] = topic;
+                }
+            }
+        }
+        delete[] nd_m;
+        delete[] p;
+    });
+    return result;
+}
 
 std::tuple<unsigned short, unsigned, double*> model::get_topic_matrix() const
 {
