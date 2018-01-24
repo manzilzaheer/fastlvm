@@ -2,8 +2,10 @@ import time
 import pickle
 import numpy as np
 import scipy as sc
-from d3m.primitives.cmu.fastlvm import CoverTree, KMeans, GMM, LDA, GLDA
-from fastlvm import read_corpus
+from fastlvm import CoverTree
+from fastlvm.covertree import HyperParams
+#from d3m.primitives.cmu.fastlvm import CoverTree, KMeans, GMM, LDA, GLDA
+#from fastlvm import read_corpus
 from sklearn.neighbors import NearestNeighbors
 from sklearn.cluster import KMeans as sKMeans
 from sklearn.mixture import GaussianMixture
@@ -27,8 +29,8 @@ y = np.require(y, requirements=['A', 'C', 'O', 'W'])
 #pdb.set_trace()
 
 print('======== Checks for Search ==========')
-
-ct = CoverTree()
+hp = HyperParams(trunc=-1)
+ct = CoverTree(hyperparams=hp)
 ct.set_training_data(inputs=x)
 t = gt()
 ct.fit()
@@ -66,7 +68,7 @@ print()
 print('Test get/set params: ')
 p = ct.get_params()
 ct = None
-ct_new = CoverTree()
+ct_new = CoverTree(hyperparams=hp)
 ct_new.set_params(params=p)
 a = ct_new.produce(inputs=y, k=3)
 if np.all(a==x[indices]):

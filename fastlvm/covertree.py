@@ -2,55 +2,61 @@ import covertreec
 
 import numpy as np
 import pdb
-from typing import NamedTuple
-from typing import Union
+import typing
+
 from primitive_interfaces.unsupervised_learning import UnsupervisedLearnerPrimitiveBase
+import d3m_metadata
+from d3m_metadata.metadata import PrimitiveMetadata
+from d3m_metadata import hyperparams
+from d3m_metadata import params
 
-Inputs = np.ndarray  # type: np.ndarray
-Outputs = np.ndarray  # type: np.ndarray
-Params = NamedTuple('Params', [
-    ('tree', np.ndarray),  # Byte stream represening the tree.
-])
 
-class CoverTree(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
-    """
-    This class provides functionality for unsupervised nearest neighbor search, which is the foundation of many other learning methods, notably manifold learning and spectral clustering. The goal is to find a number of points from the given database closest in distance to the query point. The distance can be, in general, any metric measure: standard Euclidean distance is the most common choice and the one currently implemented. In future, adding other metrics should not be too difficult. Standard packages, like those in scikit learn use KD-tree or Ball trees, which do not scale very well, especially with respect to dimension. For example, Ball Trees of scikit learn takes O(n2) construction time and a search query can be linear in worst case making it no better than brute force in some cases. In this class, we implement a modified version of the Cover Tree data structure that allow fast retrieval in logarithmic time. The key properties are: O(n log n) construction time, O(log n) retrieval, and polynomial dependence on the expansion constant of the underlying space. In addition, it allows insertion and removal of points in database. The class is pickle-able.
-    """
+Inputs = d3m_metadata.container.ndarray  # type: np.ndarray
+Outputs = d3m_metadata.container.ndarray  # type: np.ndarray
 
-    __author__ = 'CMU'
-    __metadata__ = {
-        "common_name": "Nearest Neighbor Search with Cover Trees",
-        "algorithm_type": ["Instance Based"],
-        "handles_classification": False,
-        "handles_regression": False,
-        "handles_multiclass": False,
-        "handles_multilabel": False,
-        "input_type": ["DENSE"],
-        "output_type": ["PREDICTIONS"],
-        "schema_version": 1.0,
-        "compute_resources": {
-            "sample_size": [400, 8],
-            "sample_unit": ["MB", "GB"],
-            "disk_per_node": [0, 0],
-            "expected_running_time": [10, 1000],
-            "gpus_per_node": [0, 0],
-            "cores_per_node": [32, 32],
-            "mem_per_gpu": [0, 0],
-            "mem_per_node": [1, 12],
-            "num_nodes": [1, 1],
-        },
-    }
+class Params(params.Params):
+    tree: bytes # Byte stream represening the tree.
 
-    def __init__(self, *, trunc: int = -1) -> None:
-        super(CoverTree, self).__init__()
-        self.this = None
-        self.trunc = trunc
-        self.training_inputs = None  # type: Inputs
-        self.fitted = False
+class HyperParams(hyperparams.Hyperparams):
+    trunc = hyperparams.UniformInt(lower=-1, upper=100,default=-1,description='Level of truncation of the tree. -1 means no truncation.')
+    
+class CoverTree(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams]):
+
+    metadata = PrimitiveMetadata({
+         "id": "a5f7beda-1144-4185-8cbe-f1de36cedf56",
+         "version": "1.0",
+         "name": "Nearest Neighbor Search with Cover Trees",
+         "description": " This class provides functionality for unsupervised nearest neighbor search, which is the foundation of many other learning methods, notably manifold learning and spectral clustering. The goal is to find a number of points from the given database closest in distance to the query point. The distance can be, in general, any metric measure: standard Euclidean distance is the most common choice and the one currently implemented. In future, adding other metrics should not be too difficult. Standard packages, like those in scikit learn use KD-tree or Ball trees, which do not scale very well, especially with respect to dimension. For example, Ball Trees of scikit learn takes O(n2) construction time and a search query can be linear in worst case making it no better than brute force in some cases. In this class, we implement a modified version of the Cover Tree data structure that allow fast retrieval in logarithmic time. The key properties are: O(n log n) construction time, O(log n) retrieval, and polynomial dependence on the expansion constant of the underlying space. In addition, it allows insertion and removal of points in database. The class is pickle-able. This class provides functionality for unsupervised nearest neighbor search, which is the foundation of many other learning methods, notably manifold learning and spectral clustering. The goal is to find a number of points from the given database closest in distance to the query point. The distance can be, in general, any metric measure: standard Euclidean distance is the most common choice and the one currently implemented. In future, adding other metrics should not be too difficult. Standard packages, like those in scikit learn use KD-tree or Ball trees, which do not scale very well, especially with respect to dimension. For example, Ball Trees of scikit learn takes O(n2) construction time and a search query can be linear in worst case making it no better than brute force in some cases. In this class, we implement a modified version of the Cover Tree data structure that allow fast retrieval in logarithmic time. The key properties are: O(n log n) construction time, O(log n) retrieval, and polynomial dependence on the expansion constant of the underlying space. In addition, it allows insertion and removal of points in database. The class is pickle-able. This class provides functionality for unsupervised nearest neighbor search, which is the foundation of many other learning methods, notably manifold learning and spectral clustering. The goal is to find a number of points from the given database closest in distance to the query point. The distance can be, in general, any metric measure: standard Euclidean distance is the most common choice and the one currently implemented. In future, adding other metrics should not be too difficult. Standard packages, like those in scikit learn use KD-tree or Ball trees, which do not scale very well, especially with respect to dimension. For example, Ball Trees of scikit learn takes O(n2) construction time and a search query can be linear in worst case making it no better than brute force in some cases. In this class, we implement a modified version of the Cover Tree data structure that allow fast retrieval in logarithmic time. The key properties are: O(n log n) construction time, O(log n) retrieval, and polynomial dependence on the expansion constant of the underlying space. In addition, it allows insertion and removal of points in database. The class is pickle-able.",
+         "python_path": "d3m.primitives.cmu.fastlvm.CoverTree",
+         "primitive_family": "SIMILARITY_MODELING",
+         "algorithm_types": [ "K_NEAREST_NEIGHBORS" ],
+         "keywords": ["cover trees", "fast nearest neighbor search"],
+         "source": {
+             "name": "CMU",
+             "uris": [ "https://github.com/manzilzaheer/fastlvm.git" ]
+         },
+         "installation": [
+         {
+             "type": "PIP",
+             "package_uri": "git+https://github.com/manzilzaheer/fastlvm.git@d3m"
+         }
+         ]
+     })
+
+
+    def __init__(self, *, hyperparams: HyperParams, random_seed: int = 0, docker_containers: typing.Union[typing.Dict[str, str], None] = None) -> None:
+        #super(CoverTree, self).__init__()
+        self._this = None
+        self._trunc = hyperparams['trunc']
+        self._training_inputs = None  # type: Inputs
+        self._fitted = False
+        self.hyperparams = hyperparams
+        self.random_seed = random_seed
+        self.docker_containers = docker_containers
 
     def __del__(self):
-        if self.this is not None:
-             covertreec.delete(self.this)
+        if self._this is not None:
+             covertreec.delete(self._this)
      
     def set_training_data(self, *, inputs: Inputs) -> None:
         """
@@ -62,21 +68,21 @@ class CoverTree(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
             A NxD matrix of data points for training.
         """
 
-        self.training_inputs = inputs
-        self.fitted = False
+        self._training_inputs = inputs
+        self._fitted = False
         
-    def fit(self) -> None:
+    def fit(self, *, timeout: float = None, iterations: int = None) -> None:
         """
         Construct the tree
         """
-        if self.fitted:
+        if self._fitted:
             return
 
-        if self.training_inputs is None:
+        if self._training_inputs is None:
             raise ValueError("Missing training data.")
 
-        self.this = covertreec.new(self.training_inputs, self.trunc)
-        self.fitted = True
+        self._this = covertreec.new(self._training_inputs, self._trunc)
+        self._fitted = True
  
     def get_call_metadata(self) -> bool:
         """
@@ -90,7 +96,7 @@ class CoverTree(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
         """
         return self.fitted
 
-    def produce(self, *, inputs: Inputs, k: int = 3) -> Outputs:
+    def produce(self, *, inputs: Inputs, k: int) -> Outputs:
         """
         Finds the closest points for the given set of test points using the tree constructed.
 
@@ -105,20 +111,20 @@ class CoverTree(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
             The k nearest neighbours of each point.
 
         """
-        if self.this is None:
+        if self._this is None:
             raise ValueError('Fit model first')
 
         if k == 1:
-            results = covertreec.NearestNeighbour(self.this, inputs)
+            results = covertreec.NearestNeighbour(self._this, inputs)
         else:
-            results = covertreec.kNearestNeighbours(self.this, inputs, k)
+            results = covertreec.kNearestNeighbours(self._this, inputs, k)
         
         return results
 
     def get_params(self) -> Params:
         """
         Get parameters of KMeans.
-
+OB
         Parameters are basically the cluster centres in byte stream.
 
         Returns
@@ -127,7 +133,7 @@ class CoverTree(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
             A named tuple of parameters.
         """
 
-        return Params(tree=covertreec.serialize(self.this))
+        return Params(tree=covertreec.serialize(self._this))
 
     def set_params(self, *, params: Params) -> None:
         """
@@ -140,7 +146,7 @@ class CoverTree(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
         params : Params
             A named tuple of parameters.
         """
-        self.this = covertreec.deserialize(params.tree)
+        self._this = covertreec.deserialize(params['tree'])
 
     def set_random_seed(self, *, seed: int) -> None:
         """
