@@ -77,7 +77,7 @@ setup ( name = 'fastlvm',
     keywords = 'd3m_primitive',
     cmdclass={'build_ext':build_ext},
     install_requires=['numpy>=1.13.1', 'scipy>=0.17', 'scikit-learn>=0.18.1'],
-        ext_modules = [ covertreec_module, kmeans_module, gmm_module, lda_module ], #, hdp_module, glda_module, utils_module ],
+        ext_modules = [ covertreec_module, kmeans_module, gmm_module, lda_module, utils_module ], #, hdp_module, glda_module, utils_module ],
     packages = ['fastlvm'],
     entry_points = {
         'd3m.primitives': [
