@@ -126,16 +126,34 @@ static PyObject *ldac_predict(PyObject *self, PyObject *args) {
   model *obj;
   size_t int_ptr;
   PyObject *in_data;
+  PyObject *out_data;
 
   /*  parse the input, from python int to c++ int */
   if (!PyArg_ParseTuple(args, "nO!:ldac_predict", &int_ptr, &PyList_Type, &in_data))
     return NULL;
 
-  //obj = reinterpret_cast< model * >(int_ptr);
-  //std::vector<unsigned> results = obj->predict(queryPts);
+  DataIO::corpus data;
+  data.from_python(in_data);
+
+  obj = reinterpret_cast< model * >(int_ptr);
+  DataIO::corpus preds = obj->predict(data);
+
+  data.release();
+
+  size_t M = preds.size();
+  out_data = PyList_New(M);
+  for(size_t i = 0; i < M; ++i)
+    {
+      auto& d = preds[i];
+      npy_intp dims[1] = {(npy_intp)d.size()};
+      PyObject *out_array = PyArray_SimpleNewFromData(1, dims, NPY_UINT32, d.data());
+      d.data() = nullptr;
+      PyArray_ENABLEFLAGS((PyArrayObject *)out_array, NPY_ARRAY_OWNDATA);
+      PyList_SET_ITEM(out_data, i, out_array);
+    }
 
   //Py_INCREF(out_array);
-  Py_RETURN_NONE;
+  return Py_BuildValue("N", out_data);
 }
 
 static PyObject *ldac_topic_matrix(PyObject *self, PyObject *args) {

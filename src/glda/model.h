@@ -31,7 +31,7 @@ public:
     static model* init(utils::ParsedArgs, const std::vector<std::string>&, const Eigen::Map<Eigen::MatrixXd>&, int);// initialize the model randomly
     double fit(const DataIO::corpus&, const DataIO::corpus&);                   // train LDA using prescribed algorithm on training data
     double evaluate(const DataIO::corpus&) const;                               // test LDA according to specified method
-    std::vector<unsigned> predict(const DataIO::corpus&) const;                 // test LDA according to specified method
+    DataIO::corpus predict(const DataIO::corpus&) const;                        // test LDA according to specified method
     std::pair<Eigen::Map<Eigen::MatrixXd>, Eigen::Map<Eigen::MatrixXd>> get_topic_matrix() const;     // test LDA according to specified method
     std::vector<std::vector<std::string>> get_top_words(unsigned num_words = 15) const;
 

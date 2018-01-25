@@ -356,10 +356,68 @@ double model::evaluate(const DataIO::corpus& testdata) const
     return sum.load(std::memory_order_relaxed)/tokens.load(std::memory_order_relaxed);
 }
 
-/*std::vector<unsigned> model::predict(const dataset& testdata) const
+DataIO::corpus model::predict(const DataIO::corpus& testdata) const
 {
-    return labels;
-}*/
+    DataIO::corpus result = testdata;
+    size_t M = testdata.size();
+    utils::parallel_block_for(0, M, [&](size_t start, size_t end)->void{
+	// thread local random number generator
+	xorshift128plus rng_;
+
+	unsigned* nd_m = new unsigned[K];
+	double* p = new double[K];
+
+	for(size_t i = start; i < end; ++i)
+	{
+	    const auto& doc = testdata[i];
+	    auto& z = result[i];
+	    size_t N = doc.size();
+
+	    //Initialize
+	    std::fill(nd_m, nd_m + K, 0);
+	    for (size_t j = 0; j < N; ++j)
+	    {
+		//unsigned short topic = rng_.rand_k(K);
+		unsigned short topic = (i + rng_.rand_k((unsigned short) 15))%K;
+		z[j] = topic;
+
+		// number of words in document i assigned to topic j
+		nd_m[topic] += 1;
+	    }
+
+	    for(unsigned iter = 0; iter < 50; ++iter)
+	    {
+		for(size_t j = 0; j < N; ++j)
+		{
+		    // remove z_i from the count variables
+		    unsigned short topic = z[j];
+		    nd_m[topic] -= 1;
+
+		    // do multinomial sampling via cumulative method
+		    unsigned w = doc[j];
+		    unsigned ptr = w*K;
+		    double psum = 0;
+		    for (unsigned short k = 0; k < K; ++k)
+		    {
+		        psum += (nd_m[k]/tau[kActive[k]] + alpha) * p_wk[ptr+k];
+			p[k] = psum;
+		    }
+
+		    // scaled sample because of unnormalized p[]
+		    double u = rng_.rand_double() * psum;
+		    topic = std::lower_bound(p, p + K, u) - p;
+
+		    // add newly estimated z_i to count variables
+		    nd_m[topic] += 1;
+		    z[j] = topic;
+		  }
+	    }
+	}
+	delete[] nd_m;
+	delete[] p;
+    });
+    return result;
+}
 
 std::tuple<unsigned short, unsigned, double*> model::get_topic_matrix() const
 {

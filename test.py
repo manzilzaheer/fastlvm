@@ -168,6 +168,11 @@ a = canlda.evaluate(inputs=testdata)
 # Get topic matrix
 tm = canlda.produce_topic_matrix()
 
+# Get topic assignment
+zz = canlda.produce(inputs=testdata)
+if len(zz) != len(testdata):
+    print('Problems in topic assignment!')
+    
 # Read word|topic distribution from gensim
 with open('data/lda_gensim.pkl', 'rb') as f:
     m = pickle.load(f)
@@ -190,7 +195,8 @@ if np.abs(b_new - b) < 1e-2*np.abs(b):
     print("Test for get/set params passed")
 else:
     print("Test for get/set params failed")
-    
+
+#pdb.set_trace()
 
 print('======== Checks for GLDA ==========')
 # Load 20 News data
@@ -206,6 +212,14 @@ canglda.set_training_data(training_inputs=d['trngdata'], validation_inputs=d['te
 # Train GLDA model
 canglda.fit()
 
+# Get topic matrix
+tm = canglda.produce_topic_matrix()
+
+# Get topic assignment
+zz = canglda.produce(inputs=testdata)
+if len(zz) != len(testdata):
+    print('Problems in topic assignment!')
+        
 # Test on held out data using learned model
 b = canglda.evaluate(inputs=d['testdata'])
 print('Canopy score: ', b)
@@ -221,6 +235,7 @@ if np.abs(b_new - b) < 1e-2*np.abs(b):
 else:
     print("Test for get/set params failed")
 
+# pdb.set_trace()
 
 print('======== Checks for HDP ==========')
 # Load NIPS data
@@ -237,6 +252,11 @@ canlda.fit()
 
 # Get topic matrix
 tm = canlda.produce_topic_matrix()
+
+# Get topic assignment
+zz = canlda.produce(inputs=testdata)
+if len(zz) != len(testdata):
+    print('Problems in topic assignment!')
 
 # Test on held out data using learned model
 b = canlda.evaluate(inputs=testdata)

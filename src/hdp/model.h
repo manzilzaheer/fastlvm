@@ -29,7 +29,7 @@ public:
     static model* init(utils::ParsedArgs, const std::vector<std::string>&, int);// initialize the model randomly
     double fit(const DataIO::corpus&, const DataIO::corpus&);                   // train HDP using prescribed algorithm on training data
     double evaluate(const DataIO::corpus&) const;                               // test HDP according to specified method
-    std::vector<unsigned> predict(const DataIO::corpus&) const;                 // test HDP according to specified method
+    DataIO::corpus predict(const DataIO::corpus&) const;                        // test HDP according to specified method
     std::tuple<unsigned short, unsigned, double*> get_topic_matrix() const;     // test HDP according to specified method
     std::vector<std::vector<std::string>> get_top_words(unsigned num_words = 15) const;
 
