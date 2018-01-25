@@ -2,9 +2,10 @@ import time
 import pickle
 import numpy as np
 import scipy as sc
-from fastlvm import CoverTree, KMeans
+from fastlvm import CoverTree, KMeans, GMM
 from fastlvm.covertree import HyperParams as onehp
 from fastlvm.kmeans import HyperParams as twohp
+from fastlvm.gmm import HyperParams as threehp
 #from d3m.primitives.cmu.fastlvm import CoverTree, KMeans, GMM, LDA, GLDA
 #from fastlvm import read_corpus
 from sklearn.neighbors import NearestNeighbors
@@ -115,7 +116,8 @@ else:
 print('======== Checks for GMM ==========')
 print('Building clustering data structures')
 skm = GaussianMixture(K, covariance_type='diag', max_iter=10, init_params='kmeans', verbose=0)
-ctm = GMM(k = K, iters = 10, initial_centres = 'covertree', data = x)
+hp = threehp(k = K, iters = 10, initialization = 'covertree')
+ctm = GMM(hyperparams=hp)
 ctm.set_training_data(training_inputs = x, validation_inputs = y)
 
 t = gt()
@@ -134,7 +136,7 @@ print()
 print('Test get/set params: ')
 p = ctm.get_params()
 ctm = None
-ct_new = GMM(k = K, iters = 10, initial_centres = 'covertree', data = x)
+ct_new = GMM(hyperparams=hp)
 ct_new.set_params(params=p)
 a_new = ct_new.evaluate(inputs=y)
 if np.abs(a_new - a) < 1e-9*np.abs(a):

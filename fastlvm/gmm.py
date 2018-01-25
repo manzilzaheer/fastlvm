@@ -1,16 +1,27 @@
 import gmmc
+
 import numpy as np
 import pdb
-    
-from typing import NamedTuple
-from typing import Union
-from primitive_interfaces.unsupervised_learning import UnsupervisedLearnerPrimitiveBase
+import typing
 
-Inputs = np.ndarray  # type: np.ndarray
-Outputs = np.ndarray  # type: np.ndarray
-Params = NamedTuple('Params', [
-    ('mixture_parameters', np.ndarray),  # Byte stream represening coordinates of cluster centers.
-])
+from primitive_interfaces.unsupervised_learning import UnsupervisedLearnerPrimitiveBase
+import d3m_metadata
+from d3m_metadata.metadata import PrimitiveMetadata
+from d3m_metadata import hyperparams
+from d3m_metadata import params
+
+
+Inputs = d3m_metadata.container.ndarray  # type: np.ndarray
+Outputs = d3m_metadata.container.ndarray  # type: np.ndarray
+
+class Params(params.Params):
+    mixture_parameters: bytes  # Byte stream represening coordinates of cluster centers.
+
+class HyperParams(hyperparams.Hyperparams):
+    k = hyperparams.UniformInt(lower=1, upper=10000, default=10, description='The number of clusters to form as well as the number of centroids to generate.')
+    iters = hyperparams.UniformInt(lower=1, upper=10000, default=100, description='The number of iterations of inference.')
+    initialization = hyperparams.Enumeration[str](values=['random', 'firstk', 'kmeanspp', 'covertree'], default='covertree', description="'random': choose k observations (rows) at random from data for the initial centroids. 'kmeanspp' : selects initial cluster centers by finding well spread out points using cover trees to speed up convergence. 'covertree' : selects initial cluster centers by sampling to speed up convergence.")
+
 
 def init_covertree(k: int, points: Inputs) -> Outputs:
     import covertreec
@@ -28,85 +39,51 @@ def init_kmeanspp(k: int, points: Inputs) -> Outputs:
     return seeds
     
 
-class GMM(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
-    """
-    This class provides functionality for unsupervised inference on Gaussian mixture model, which is a probabilistic model that assumes all the data points are generated from a mixture of a finite number of Gaussian distributions with unknown parameters. It can be viewed as a generalization of the K-Means clustering to incorporate information about the covariance structure of the data. Standard packages, like those in scikit learn run on a single machine and often only on one thread. Whereas our underlying C++ implementation can be distributed to run on multiple machines. To enable the distribution through python interface is work in progress. In this class, we implement inference on (Bayesian) Gaussian mixture models using Canopy algorithm. The API is similar to sklearn.mixture.GaussianMixture. The class is pickle-able.
-    """
+class GMM(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams]):
 
-    __author__ = 'CMU'
-    __metadata__ = {
-        "common_name": "Gaussian Mixture Models",
-        "algorithm_type": ["Bayesian","Clustering","Probabilistic Graphical Models"],
-        "handles_classification": False,
-        "handles_regression": False,
-        "handles_multiclass": False,
-        "handles_multilabel": False,
-        "input_type": ["DENSE"],
-        "output_type": ["PREDICTIONS"],
-        "schema_version": 1.0,
-        "compute_resources": {
-            "sample_size": [],
-            "sample_unit": [],
-            "disk_per_node": [],
-            "expected_running_time": [],
-            "gpus_per_node": [],
-            "cores_per_node": [],
-            "mem_per_gpu": [],
-            "mem_per_node": [],
-            "num_nodes": [],
+    metadata = PrimitiveMetadata({
+        "id": "49af9397-d9a2-450f-93eb-c3b631ba6646",
+        "version": "1.0",
+        "name": "Gaussian Mixture Models",
+        "description": "This class provides functionality for unsupervised inference on Gaussian mixture model, which is a probabilistic model that assumes all the data points are generated from a mixture of a finite number of Gaussian distributions with unknown parameters. It can be viewed as a generalization of the K-Means clustering to incorporate information about the covariance structure of the data. Standard packages, like those in scikit learn run on a single machine and often only on one thread. Whereas our underlying C++ implementation can be distributed to run on multiple machines. To enable the distribution through python interface is work in progress. In this class, we implement inference on (Bayesian) Gaussian mixture models using Canopy algorithm. The API is similar to sklearn.mixture.GaussianMixture. The class is pickle-able.",
+        "python_path": "d3m.primitives.cmu.fastlvm.GMM",
+        "primitive_family": "CLUSTERING",
+        "algorithm_types": [ "K_MEANS_CLUSTERING" ],
+        "keywords": ["large scale Gaussian Mixture Models", "clustering"],
+        "source": {
+            "name": "CMU",
+            "uris": [ "https://github.com/manzilzaheer/fastlvm.git" ]
         },
-    }
+        "installation": [
+        {
+            "type": "PIP",
+            "package_uri": "git+https://github.com/manzilzaheer/fastlvm.git@d3m"
+        }
+        ]
+    })
 
-    def __init__(self, *, k: int = 10, iters: int = 100, initial_centres: Union[str, np.ndarray] = 'covertree', data: Union[None, np.ndarray] = None, initial_vars: Union[None, np.ndarray] = None) -> None:
-        super(GMM, self).__init__()
-        self.this = None
 
-        if initial_centres == 'random':
-            if data is None:
-                raise ValueError('Must provide data when using random')
-            idx = np.random.choice(data.shape[0], k, replace=False)
-            initial_centres = data[idx]
-        elif initial_centres == 'firstk':
-            if data is None:
-                raise ValueError('Must provide data when using firstk')
-            initial_centres = data[:k]
-        elif initial_centres == 'kmeanspp':
-            if data is None:
-                raise ValueError('Must provide data when using kmeanspp')
-            initial_centres = init_kmeanspp(k, data)
-        elif initial_centres == 'covertree':
-            if data is None:
-                raise ValueError('Must provide data when using covertree')
-            initial_centres = init_covertree(k, data)
-        elif isinstance(initial_centres, np.ndarray):
-            if initial_centres.shape[0] != k:
-                raise ValueError('Must provide ', k, ' initial means when providing numpy arrays!')
-        else:
-            raise NotImplementedError('This type of initial means is not implemented')
+    def __init__(self, *, hyperparams: HyperParams, random_seed: int = 0, docker_containers: typing.Union[typing.Dict[str, str], None] = None) -> None:
+        #super(GMM, self).__init__()
+        self._this = None
+        self._k = hyperparams['k']
+        self._iters = hyperparams['iters']
+        self._initialization = hyperparams['initialization']
 
-        if initial_vars is None:
-            if data is None:
-                raise ValueError('Must provide data when not providing init var')
-            initial_vars = 0.5/np.var(data, axis=0)
-            #initial_vars = np.tile(initial_vars.ravel(), (k,1))
-        elif isinstance(initial_vars, np.ndarray):
-            if sum(initial_vars.shape) == initial_centres.shape[1]:
-                initial_vars = np.tile(initial_vars.ravel(), (k,1))
-            elif initial_vars.shape[0] != k:
-                raise ValueError('Must provide ', k, ' initial vars when providing numpy arrays!')
-        else:
-            raise NotImplementedError('This type of initial vars is not implemented')
-
-        self.this = gmmc.new(k, iters, initial_centres, initial_vars)
-        self.training_inputs = None  # type: Inputs
-        self.validation_inputes = None # type: Inputs
-        self.fitted = False
-
+        self._training_inputs = None  # type: Inputs
+        self._validation_inputs = None # type: Inputs
+        self._fitted = False
+        
+        self.hyperparams = hyperparams
+        self.random_seed = random_seed
+        self.docker_containers = docker_containers
+                        
+        
     def __del__(self) -> None:
-        if self.this is not None:
-            gmmc.delete(self.this)
+        if self._this is not None:
+            gmmc.delete(self._this)
 
-    def set_training_data(self, *, training_inputs: Inputs, validation_inputs: Inputs = None) -> None:
+    def set_training_data(self, *, training_inputs: Inputs, validation_inputs: Inputs) -> None:
         """
         Sets training data for GMM.
 
@@ -118,23 +95,39 @@ class GMM(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
             A N'xD matrix of data points for validaton.
         """
 
-        self.training_inputs = training_inputs
-        self.validation_inputes = validation_inputs
-        self.fitted = False
+        self._training_inputs = training_inputs
+        self._validation_inputs = validation_inputs
+
+        initial_centres = None
+        if self._initialization == 'random':
+            idx = np.random.choice(training_inputs.shape[0], self._k, replace=False)
+            initial_centres = training_inputs[idx]
+        elif self._initialization == 'firstk':
+            initial_centres = training_inputs[:self._k]
+        elif self._initialization == 'kmeanspp':
+            initial_centres = init_kmeanspp(self._k, training_inputs)
+        elif self._initialization == 'covertree':
+            initial_centres = init_covertree(self._k, training_inputs)
+        else:
+            raise NotImplementedError('This type of initial means is not implemented')
+        initial_vars = 0.5/np.var(training_inputs, axis=0)
+        self._this = gmmc.new(self._k, self._iters, initial_centres, initial_vars)
+        
+        self._fitted = False
 
     
     def fit(self) -> None:
         """
         Inference on the Gaussian mixture model
         """
-        if self.fitted:
+        if self._fitted:
             return
 
-        if self.training_inputs is None:
+        if self._training_inputs is None:
             raise ValueError("Missing training data.")
 
-        gmmc.fit(self.this, self.training_inputs, self.validation_inputes)
-        self.fitted = True
+        gmmc.fit(self._this, self._training_inputs, self._validation_inputs)
+        self._fitted = True
 
     def get_call_metadata(self) -> bool:
         """
@@ -146,7 +139,7 @@ class GMM(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
             True/false status of fitting.
 
         """
-        return self.fitted
+        return self._fitted
         
     def produce(self, *, inputs: Inputs) -> Outputs:
         """
@@ -163,7 +156,7 @@ class GMM(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
             The index of the cluster each sample belongs to.
 
         """
-        return gmmc.predict(self.this, inputs)
+        return gmmc.predict(self._this, inputs)
 
     def evaluate(self, *, inputs: Inputs) -> float:
         """
@@ -179,9 +172,9 @@ class GMM(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
         score : float
             The log-likelihood on the supplied points.
         """
-        return gmmc.evaluate(self.this, inputs)
+        return gmmc.evaluate(self._this, inputs)
  
-    def get_centers(self) -> Outputs:
+    def produce_centers(self) -> Outputs:
         """
         Get current cluster means and variances for this model.
 
@@ -193,7 +186,7 @@ class GMM(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
             A KxD matrix of cluster variances.
         """
 
-        return gmmc.centers(self.this)
+        return gmmc.centers(self._this)
     
     def get_params(self) -> Params:
         """
@@ -207,7 +200,7 @@ class GMM(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
             A named tuple of parameters.
         """
 
-        return Params(mixture_parameters=gmmc.serialize(self.this))
+        return Params(mixture_parameters=gmmc.serialize(self._this))
 
     def set_params(self, *, params: Params) -> None:
         """
@@ -220,7 +213,7 @@ class GMM(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
         params : Params
             A named tuple of parameters.
         """
-        self.this = gmmc.deserialize(params.mixture_parameters)
+        self._this = gmmc.deserialize(params['mixture_parameters'])
 
     def set_random_seed(self, *, seed: int) -> None:
         """

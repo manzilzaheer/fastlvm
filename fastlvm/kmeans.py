@@ -100,9 +100,9 @@ class KMeans(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperPara
         initial_centres = None
         if self._initialization == 'random':
             idx = np.random.choice(training_inputs.shape[0], self._k, replace=False)
-            initial_centres = data[idx]
+            initial_centres = training_inputs[idx]
         elif self._initialization == 'firstk':
-            initial_centres = data[:k]
+            initial_centres = training_inputs[:self._k]
         elif self._initialization == 'kmeanspp':
             initial_centres = init_kmeanspp(self._k, training_inputs)
         elif self._initialization == 'covertree':
