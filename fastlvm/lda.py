@@ -205,7 +205,7 @@ class LDA(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams]
         params : Params
             A named tuple of parameters.
         """
-        self.this = ldac.deserialize(params['topic_matrix'])
+        self._this = ldac.deserialize(params['topic_matrix'])
 
     def set_random_seed(self, *, seed: int) -> None:
         """

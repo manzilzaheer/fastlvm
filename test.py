@@ -2,11 +2,12 @@ import time
 import pickle
 import numpy as np
 import scipy as sc
-from fastlvm import CoverTree, KMeans, GMM, LDA
+from fastlvm import CoverTree, KMeans, GMM, LDA, GLDA
 from fastlvm.covertree import HyperParams as onehp
 from fastlvm.kmeans import HyperParams as twohp
 from fastlvm.gmm import HyperParams as threehp
 from fastlvm.lda import HyperParams as fourhp
+from fastlvm.glda import HyperParams as fivehp
 #from d3m.primitives.cmu.fastlvm import CoverTree, KMeans, GMM, LDA, GLDA
 from fastlvm import read_corpus
 from sklearn.neighbors import NearestNeighbors
@@ -197,8 +198,9 @@ with open('data/20_news.pkl', 'rb') as f:
     # {'trngdata':trngdata, 'testdata':testdata, 'word_map':word_map, 'word_vec':word_vec}
 
 # Init GLDA model
-canglda = GLDA(k=10, iters=10, vocab=d['word_map'], vectors=d['word_vec'])
-canglda.set_training_data(training_inputs=d['trngdata'], validation_inputs=d['testdata'])
+hp = fivehp(k=10, iters=10, vocab=len(d['word_map']))
+canglda = GLDA(hyperparams=hp)
+canglda.set_training_data(training_inputs=d['trngdata'], validation_inputs=d['testdata'], vectors=d['word_vec'])
 
 # Train GLDA model
 canglda.fit()
@@ -210,7 +212,7 @@ print('Canopy score: ', b)
 print('Test pickling: ')
 p = canglda.get_params()
 canglda = None
-ct_new = GLDA(k=10, iters=10, vocab=d['word_map'], vectors=d['word_vec'])
+ct_new = GLDA(hyperparams=hp)
 ct_new.set_params(params=p)
 b_new = ct_new.evaluate(inputs=d['testdata'])
 if np.abs(b_new - b) < 1e-2*np.abs(b):
