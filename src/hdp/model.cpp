@@ -5,6 +5,7 @@
 model::model() :
     K(100),
     V(0),
+    gamma(1.0),
 
     n_k(nullptr),
     n_wk(nullptr),
@@ -445,6 +446,7 @@ int model::init_train(const DataIO::corpus& trngdata)
         delete[] nlocal_k;
     });
 
+    kActive.clear();
     for(unsigned short k = 0; k<K; ++k)
     {
         if (n_k[k] > 0)
@@ -649,6 +651,8 @@ size_t model::msg_size() const
         vocab_len += s.size() + 1;
     return sizeof(unsigned short)
         + sizeof(unsigned)*6
+        + sizeof(double)
+        + sizeof(double)*(K+1)
         + sizeof(double)*K*V
         + sizeof(char)*vocab_len
         + sizeof(double)*time_ellapsed.size()
@@ -659,7 +663,7 @@ size_t model::msg_size() const
 char* model::serialize() const
 {
     //Covert following to char* buff with following order
-    // K | V | n_iters | n_save | n_top_words | p_wk | id2word | time_ellapsed.size() | time_ellapsed | likelihood.size() | likelihood
+    // K | V | n_iters | n_save | n_top_words | gamma | tau_left | tau | p_wk | id2word | time_ellapsed.size() | time_ellapsed | likelihood.size() | likelihood
     char* buff = new char[msg_size()];
 
     char* pos = buff;
@@ -699,6 +703,31 @@ char* model::serialize() const
     end = start + shift;
     std::copy(start, end, pos);
     pos += shift;
+
+    // insert gamma
+    shift = sizeof(double);
+    start = (char*)&(gamma);
+    end = start + shift;
+    std::copy(start, end, pos);
+    pos += shift;
+
+    // insert tau_left
+    shift = sizeof(double);
+    start = (char*)&(tau_left);
+    end = start + shift;
+    std::copy(start, end, pos);
+    pos += shift;
+
+    // insert tau array
+    for (const auto& k : kActive)
+    {
+      double tauk = tau[k];
+      shift = sizeof(double);
+      start = (char*)&(tauk);
+      end = start + shift;
+      std::copy(start, end, pos);
+      pos += shift;
+    }
 
     // insert word|topic distribution
     shift = sizeof(double)*K*V;
@@ -751,7 +780,7 @@ char* model::serialize() const
 void model::deserialize(char* buff)
 {
     /** Convert char* buff into following buff
-    K | V | n_iters | n_save | n_top_words | p_wk | id2word | time_ellapsed.size() | time_ellapsed | likelihood.size() | likelihood **/
+    K | V | n_iters | n_save | n_top_words | gamma | tau_left | tau |  p_wk | id2word | time_ellapsed.size() | time_ellapsed | likelihood.size() | likelihood **/
     //char* save = buff;
 
     // extract K and V
@@ -774,6 +803,18 @@ void model::deserialize(char* buff)
     n_top_words = *((unsigned *)buff);
     //std::cout << "n_top_words: " << n_top_words << std::endl;
     buff += sizeof(unsigned);
+
+    gamma = *((double *)buff);
+    buff += sizeof(double);
+    
+    tau_left = *((double *)buff);
+    buff += sizeof(double);
+
+    // extract tau
+    if (tau)     delete[] tau;
+    tau = new double[K];
+    std::copy(buff, buff + sizeof(double)*K, (char *) tau);
+    buff += sizeof(double)*K;
     
     // extract p_wk
     if (p_wk)    delete[] p_wk;
@@ -820,6 +861,14 @@ void model::deserialize(char* buff)
     unsigned nst = n_threads - ntt;
     cbuff = new circular_queue<delta>[nst*ntt];
     inf_stop = false;
+
+    // initialize active topics
+    kActive.clear();
+    kGaps.clear();
+    for(unsigned short k = 0; k<K; ++k)
+      kActive.push_back(k);
+    for(unsigned short k = K; k<Kmax; ++k)
+      kGaps.push(k);
     
     // rebuild any auxiliary data structures
     specific_init();

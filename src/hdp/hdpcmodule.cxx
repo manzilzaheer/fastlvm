@@ -47,7 +47,7 @@ static PyObject *new_hdpc(PyObject *self, PyObject *args)
   for(unsigned w = 0; w < V; ++w)
       word_map.emplace_back((char*)PyUnicode_DATA(PyList_GET_ITEM(in_vocab, w)));
 
-  utils::ParsedArgs params(K, iters, "stcHDP");
+  utils::ParsedArgs params(K, iters, "aliasHDP");
   model* hdp = model::init(params, word_map, 0);
   size_t int_ptr = reinterpret_cast< size_t >(hdp);
 

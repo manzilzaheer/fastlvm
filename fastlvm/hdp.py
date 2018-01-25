@@ -1,18 +1,30 @@
 import hdpc
+
 import numpy as np
 import pdb
-    
-from typing import NamedTuple
-from typing import Union
+import typing
+
 from primitive_interfaces.unsupervised_learning import UnsupervisedLearnerPrimitiveBase
+import d3m_metadata
+from d3m_metadata.metadata import PrimitiveMetadata
+from d3m_metadata import hyperparams
+from d3m_metadata import params
 
-Inputs = list  # type: np.ndarray
-Outputs = list  # type: np.ndarray
-Params = NamedTuple('Params', [
-    ('topic_matrix', np.ndarray),  # Byte stream represening topics
-])
 
-class HDP(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
+Inputs = d3m_metadata.container.List[d3m_metadata.container.ndarray]  # type: list of np.ndarray
+Outputs = d3m_metadata.container.List[d3m_metadata.container.ndarray]  # type: list of np.ndarray
+Predicts = d3m_metadata.container.ndarray  # type: np.ndarray
+
+class Params(params.Params):
+    topic_matrix: bytes  # Byte stream represening topics
+
+class HyperParams(hyperparams.Hyperparams):
+    k = hyperparams.UniformInt(lower=1, upper=10000, default=10, description='The number of clusters to form as well as the number of centroids to generate.')
+    iters = hyperparams.UniformInt(lower=1, upper=10000, default=100, description='The number of iterations of inference.')
+    vocab = hyperparams.UniformInt(lower=1, upper=1000000, default=1000, description='Vocab size.')
+                        
+
+class HDP(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams]):
     """
     This class provides functionality for Hierarchical Dirichlet Process, which is a nonparametric Bayesian model for topic modelling on corpora of documents which seeks to represent the underlying thematic structure of the document collection. They have emerged as a powerful new technique of finding useful structure in an unstructured collection as it learns distributions over words. The high probability words in each distribution gives us a way of understanding the contents of the corpus at a very high level. In HDP, each document of the corpus is assumed to have a distribution over K topics, where the discrete topic distributions are drawn from a symmetric dirichlet distribution. As it is a nonparametric model, the number of topics K is inferred automatically. The API is similar to its parametric equivalent sklearn.decomposition.LatentDirichletAllocation. The class is pickle-able.
     """
@@ -41,30 +53,50 @@ class HDP(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
         },
     }
 
-    def __init__(self, *, k: int = 10, iters: int = 100, vocab: Union[list, int] = 10000) -> None:
-        super(HDP, self).__init__()
-        self.this = None
+    metadata = PrimitiveMetadata({
+        "id": "e582e738-2f7d-4b5d-964f-022d15f19018",
+        "version": "1.0",
+        "name": "Hierarchical Dirichlet Process Topic Modelling",
+        "description": "This class provides functionality for Hierarchical Dirichlet Process, which is a nonparametric Bayesian model for topic modelling on corpora of documents which seeks to represent the underlying thematic structure of the document collection. They have emerged as a powerful new technique of finding useful structure in an unstructured collection as it learns distributions over words. The high probability words in each distribution gives us a way of understanding the contents of the corpus at a very high level. In HDP, each document of the corpus is assumed to have a distribution over K topics, where the discrete topic distributions are drawn from a symmetric dirichlet distribution. As it is a nonparametric model, the number of topics K is inferred automatically. The API is similar to its parametric equivalent sklearn.decomposition.LatentDirichletAllocation. The class is pickle-able.",
+        "python_path": "d3m.primitives.cmu.fastlvm.HDP",
+        "primitive_family": "CLUSTERING",
+        "algorithm_types": [ "LATENT_DIRICHLET_ALLOCATION" ],
+        "keywords": ["large scale HDP", "Bayesian Nonparametrics", "topic modeling", "clustering"],
+        "source": {
+            "name": "CMU",
+            "uris": [ "https://github.com/manzilzaheer/fastlvm.git" ]
+        },
+        "installation": [
+        {
+            "type": "PIP",
+            "package_uri": "git+https://github.com/manzilzaheer/fastlvm.git@d3m"
+        }
+        ]
+    })
 
-        if isinstance(vocab, int):
-            if vocab < 0:
-                raise ValueError('Vocab size must be non-negative!')
-            vocab = [''.join(['w',i]) for i in range(vocab)]
-        elif isinstance(vocab, list):
-            if len(vocab) > 0:
-                if not isinstance(vocab[0], str):
-                    raise ValueError('Vocab must be list of stringss!')
+    
+    def __init__(self, *, hyperparams: HyperParams, random_seed: int = 0, docker_containers: typing.Union[typing.Dict[str, str], None] = None) -> None:
+        #super(HDP, self).__init__()
+        self._this = None
+        self._k = hyperparams['k']
+        self._iters = hyperparams['iters']
+        self._vocab = hyperparams['vocab']
 
-        self.this = hdpc.new(k, iters, vocab)
-        self.training_inputs = None  # type: Inputs
-        self.validation_inputes = None # type: Inputs
-        self.fitted = False
-        self.ext = None
+        self._training_inputs = None  # type: Inputs
+        self._validation_inputs = None # type: Inputs
+        self._fitted = False
+        self._ext = None
+
+        self.hyperparams = hyperparams
+        self.random_seed = random_seed
+        self.docker_containers = docker_containers
+        
         
     def __del__(self):
-        if self.this is not None:
-            hdpc.delete(self.this, self.ext)
+        if self._this is not None:
+            hdpc.delete(self._this, self._ext)
         
-    def set_training_data(self, *, training_inputs: Inputs, validation_inputs: Inputs = None) -> None:
+    def set_training_data(self, *, training_inputs: Inputs, validation_inputs: Inputs) -> None:
         """
         Sets training data for HDP.
 
@@ -76,23 +108,27 @@ class HDP(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
             A list of 1d numpy array of dtype uint32. Each numpy array contains a document with each token mapped to its word id. This represents validation docs to validate the results learned after each iteration of canopy algorithm.
         """
 
-        self.training_inputs = training_inputs
-        self.validation_inputes = validation_inputs
-        self.fitted = False
+        self._training_inputs = training_inputs
+        self._validation_inputs = validation_inputs
+
+        vocab = [''.join(['w',str(i)]) for i in range(self._vocab)]
+        self._this = hdpc.new(self._k, self._iters, vocab)
+        
+        self._fitted = False
 
     
     def fit(self) -> None:
         """
         Inference on the hierarchical Dirichlet process model
         """
-        if self.fitted:
+        if self._fitted:
             return
 
-        if self.training_inputs is None:
+        if self._training_inputs is None:
             raise ValueError("Missing training data.")
 
-        hdpc.fit(self.this, self.training_inputs, self.validation_inputes)
-        self.fitted = True
+        hdpc.fit(self._this, self._training_inputs, self._validation_inputs)
+        self._fitted = True
 
     def get_call_metadata(self) -> bool:
         """
@@ -104,7 +140,7 @@ class HDP(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
             True/false status of fitting.
 
         """
-        return self.fitted
+        return self._fitted
         
     def produce(self, *, inputs: Inputs) -> Outputs:
         """
@@ -121,9 +157,9 @@ class HDP(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
             A list of 1d numpy array which represents index of the topic each token belongs to.
 
         """
-        return hdpc.predict(self.this, inputs)
+        return hdpc.predict(self._this, inputs)
 
-    def evaluate(self, points) -> float:
+    def evaluate(self, *, inputs: Inputs) -> float:
         """
         Finds the per-token log likelihood (-ve log perplexity) of learned model on a set of test docs.
         
@@ -137,9 +173,9 @@ class HDP(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
         score : float
             Final per-token log likelihood (-ve log perplexity).
         """
-        return hdpc.evaluate(self.this, points)
+        return hdpc.evaluate(self._this, inputs)
  
-    def get_top_words(self, *, num_top: int = 15) -> Outputs:
+    def produce_top_words(self, *, num_top: int) -> Outputs:
         """
         Get the top words of each topic for this model.
 
@@ -154,9 +190,9 @@ class HDP(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
             A list of size k containing list of size num_top words.
         """
 
-        return hdpc.top_words(self.this, num_top)
+        return hdpc.top_words(self._this, num_top)
 
-    def get_topic_matrix(self) -> np.ndarray:
+    def produce_topic_matrix(self) -> np.ndarray:
         """
         Get current word|topic distribution matrix for this model.
 
@@ -166,9 +202,9 @@ class HDP(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
             A numpy array of shape (vocab_size,k) with each column containing the word|topic distribution.
         """
 
-        if self.ext is None:
-            self.ext = hdpc.topic_matrix(self.this)
-        return self.ext
+        if self._ext is None:
+            self._ext = hdpc.topic_matrix(self._this)
+        return self._ext
     
     def get_params(self) -> Params:
         """
@@ -182,7 +218,7 @@ class HDP(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
             A named tuple of parameters.
         """
 
-        return Params(topic_matrix=hdpc.serialize(self.this))
+        return Params(topic_matrix=hdpc.serialize(self._this))
 
     def set_params(self, *, params: Params) -> None:
         """
@@ -195,7 +231,7 @@ class HDP(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
         params : Params
             A named tuple of parameters.
         """
-        self.this = hdpc.deserialize(params.topic_matrix)
+        self._this = hdpc.deserialize(params['topic_matrix'])
 
     def set_random_seed(self, *, seed: int) -> None:
         """

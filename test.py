@@ -2,12 +2,13 @@ import time
 import pickle
 import numpy as np
 import scipy as sc
-from fastlvm import CoverTree, KMeans, GMM, LDA, GLDA
+from fastlvm import CoverTree, KMeans, GMM, LDA, GLDA, HDP
 from fastlvm.covertree import HyperParams as onehp
 from fastlvm.kmeans import HyperParams as twohp
 from fastlvm.gmm import HyperParams as threehp
 from fastlvm.lda import HyperParams as fourhp
 from fastlvm.glda import HyperParams as fivehp
+from fastlvm.hdp import HyperParams as sixhp
 #from d3m.primitives.cmu.fastlvm import CoverTree, KMeans, GMM, LDA, GLDA
 from fastlvm import read_corpus
 from sklearn.neighbors import NearestNeighbors
@@ -185,7 +186,7 @@ canlda = None
 ct_new = LDA(hyperparams=hp)
 ct_new.set_params(params=p)
 b_new = ct_new.evaluate(inputs=testdata)
-if np.abs(b_new - b) < 1e-2*np.abs(a):
+if np.abs(b_new - b) < 1e-2*np.abs(b):
     print("Test for get/set params passed")
 else:
     print("Test for get/set params failed")
@@ -219,3 +220,35 @@ if np.abs(b_new - b) < 1e-2*np.abs(b):
     print("Test for get/set params passed")
 else:
     print("Test for get/set params failed")
+
+
+print('======== Checks for HDP ==========')
+# Load NIPS data
+trngdata, vocab = read_corpus('data/nips.train')
+testdata, vocab = read_corpus('data/nips.test', vocab)
+
+# Init HDP model
+hp = sixhp(k=10, iters=100, vocab=len(vocab))
+canlda = HDP(hyperparams=hp)
+canlda.set_training_data(training_inputs=trngdata, validation_inputs=testdata)
+
+# Train HDP model
+canlda.fit()
+
+# Get topic matrix
+tm = canlda.produce_topic_matrix()
+
+# Test on held out data using learned model
+b = canlda.evaluate(inputs=testdata)
+print('HDP score: ', b)
+
+print('Test get/set params: ')
+p = canlda.get_params()
+canlda = None
+ct_new = HDP(hyperparams=hp)
+ct_new.set_params(params=p)
+b_new = ct_new.evaluate(inputs=testdata)
+if np.abs(b_new - b) < 1e-2*np.abs(b):
+        print("Test for get/set params passed")
+else:
+        print("Test for get/set params failed")

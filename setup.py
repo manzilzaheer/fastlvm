@@ -1,3 +1,4 @@
+
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext as _build_ext
 import sys
@@ -77,7 +78,7 @@ setup ( name = 'fastlvm',
     keywords = 'd3m_primitive',
     cmdclass={'build_ext':build_ext},
     install_requires=['numpy>=1.13.1', 'scipy>=0.17', 'scikit-learn>=0.18.1'],
-    ext_modules = [ covertreec_module, kmeans_module, gmm_module, lda_module, glda_module, utils_module ], #, hdp_module, ],
+    ext_modules = [ covertreec_module, kmeans_module, gmm_module, lda_module, glda_module, hdp_module, utils_module ],
     packages = ['fastlvm'],
     entry_points = {
         'd3m.primitives': [
@@ -86,7 +87,7 @@ setup ( name = 'fastlvm',
             'cmu.fastlvm.GMM = fastlvm:GMM',
             'cmu.fastlvm.LDA = fastlvm:LDA',
             'cmu.fastlvm.GLDA = fastlvm:GLDA',
-            #'cmu.fastlvm.HDP = fastlvm:HDP',
+            'cmu.fastlvm.HDP = fastlvm:HDP',
         ],
     },
 )
