@@ -2,12 +2,13 @@ import time
 import pickle
 import numpy as np
 import scipy as sc
-from fastlvm import CoverTree, KMeans, GMM
+from fastlvm import CoverTree, KMeans, GMM, LDA
 from fastlvm.covertree import HyperParams as onehp
 from fastlvm.kmeans import HyperParams as twohp
 from fastlvm.gmm import HyperParams as threehp
+from fastlvm.lda import HyperParams as fourhp
 #from d3m.primitives.cmu.fastlvm import CoverTree, KMeans, GMM, LDA, GLDA
-#from fastlvm import read_corpus
+from fastlvm import read_corpus
 from sklearn.neighbors import NearestNeighbors
 from sklearn.cluster import KMeans as sKMeans
 from sklearn.mixture import GaussianMixture
@@ -152,7 +153,8 @@ trngdata, vocab = read_corpus('data/nips.train')
 testdata, vocab = read_corpus('data/nips.test', vocab)
 
 # Init LDA model
-canlda = LDA(k=10, iters=100, vocab=vocab)
+hp = fourhp(k=10, iters=100, vocab=len(vocab))
+canlda = LDA(hyperparams=hp)
 canlda.set_training_data(training_inputs=trngdata, validation_inputs=testdata)
 
 # Train LDA model
@@ -162,7 +164,7 @@ canlda.fit()
 a = canlda.evaluate(inputs=testdata)
 
 # Get topic matrix
-tm = canlda.get_topic_matrix()
+tm = canlda.produce_topic_matrix()
 
 # Read word|topic distribution from gensim
 with open('data/lda_gensim.pkl', 'rb') as f:
@@ -179,7 +181,7 @@ print('Difference: ', a-b)
 print('Test get/set params: ')
 p = canlda.get_params()
 canlda = None
-ct_new = LDA(k=10, iters=100, vocab=vocab)
+ct_new = LDA(hyperparams=hp)
 ct_new.set_params(params=p)
 b_new = ct_new.evaluate(inputs=testdata)
 if np.abs(b_new - b) < 1e-2*np.abs(a):

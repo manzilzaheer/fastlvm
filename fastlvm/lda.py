@@ -1,72 +1,76 @@
 import ldac
+
 import numpy as np
 import pdb
-    
-from typing import NamedTuple
-from typing import Union
+import typing
+
 from primitive_interfaces.unsupervised_learning import UnsupervisedLearnerPrimitiveBase
+import d3m_metadata
+from d3m_metadata.metadata import PrimitiveMetadata
+from d3m_metadata import hyperparams
+from d3m_metadata import params
 
-Inputs = list  # type: np.ndarray
-Outputs = list  # type: np.ndarray
-Params = NamedTuple('Params', [
-    ('topic_matrix', np.ndarray),  # Byte stream represening topics
-])
 
-class LDA(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
-    """
-    This class provides functionality for unsupervised inference on latent Dirichlet allocation, which is a probabilistic topic model of corpora of documents which seeks to represent the underlying thematic structure of the document collection. They have emerged as a powerful new technique of finding useful structure in an unstructured collection as it learns distributions over words. The high probability words in each distribution gives us a way of understanding the contents of the corpus at a very high level. In LDA, each document of the corpus is assumed to have a distribution over K topics, where the discrete topic distributions are drawn from a symmetric dirichlet distribution. Standard packages, like those in scikit learn are inefficient in addition to being limited to a single machine. Whereas our underlying C++ implementation can be distributed to run on multiple machines. To enable the distribution through python interface is work in progress. The API is similar to sklearn.decomposition.LatentDirichletAllocation.
-    """
+Inputs = d3m_metadata.container.List[d3m_metadata.container.ndarray]  # type: list of np.ndarray
+Outputs = d3m_metadata.container.List[d3m_metadata.container.ndarray]  # type: list of np.ndarray
+Predicts = d3m_metadata.container.ndarray  # type: np.ndarray
 
-    __author__ = 'CMU'
-    __metadata__ = {
-        "common_name": "Latent Dirichlet Allocation Topic Modelling",
-        "algorithm_type": ["Bayesian","Clustering","Probabilistic Graphical Models"],
-        "handles_classification": False,
-        "handles_regression": False,
-        "handles_multiclass": False,
-        "handles_multilabel": False,
-        "input_type": ["DENSE"],
-        "output_type": ["PREDICTIONS"],
-        "schema_version": 1.0,
-        "compute_resources": {
-            "sample_size": [],
-            "sample_unit": [],
-            "disk_per_node": [],
-            "expected_running_time": [],
-            "gpus_per_node": [],
-            "cores_per_node": [],
-            "mem_per_gpu": [],
-            "mem_per_node": [],
-            "num_nodes": [],
+class Params(params.Params):
+    topic_matrix: bytes  # Byte stream represening topics
+
+class HyperParams(hyperparams.Hyperparams):
+    k = hyperparams.UniformInt(lower=1, upper=10000, default=10, description='The number of clusters to form as well as the number of centroids to generate.')
+    iters = hyperparams.UniformInt(lower=1, upper=10000, default=100, description='The number of iterations of inference.')
+    vocab = hyperparams.UniformInt(lower=1, upper=1000000, default=1000, description='Vocab size.')
+
+                
+
+class LDA(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams]):
+    
+    metadata = PrimitiveMetadata({
+        "id": "f410b951-1cb6-481c-8d95-2d97b31d411d",
+        "version": "1.0",
+        "name": "Latent Dirichlet Allocation Topic Modelling",
+        "description": "This class provides functionality for unsupervised inference on latent Dirichlet allocation, which is a probabilistic topic model of corpora of documents which seeks to represent the underlying thematic structure of the document collection. They have emerged as a powerful new technique of finding useful structure in an unstructured collection as it learns distributions over words. The high probability words in each distribution gives us a way of understanding the contents of the corpus at a very high level. In LDA, each document of the corpus is assumed to have a distribution over K topics, where the discrete topic distributions are drawn from a symmetric dirichlet distribution. Standard packages, like those in scikit learn are inefficient in addition to being limited to a single machine. Whereas our underlying C++ implementation can be distributed to run on multiple machines. To enable the distribution through python interface is work in progress. The API is similar to sklearn.decomposition.LatentDirichletAllocation.",
+        "python_path": "d3m.primitives.cmu.fastlvm.LDA",
+        "primitive_family": "CLUSTERING",
+        "algorithm_types": [ "K_MEANS_CLUSTERING" ],
+        "keywords": ["large scale Gaussian Mixture Models", "clustering"],
+        "source": {
+            "name": "CMU",
+            "uris": [ "https://github.com/manzilzaheer/fastlvm.git" ]
         },
-    }
+        "installation": [
+        {
+            "type": "PIP",
+            "package_uri": "git+https://github.com/manzilzaheer/fastlvm.git@d3m"
+        }
+        ]
+    })
+    
 
-    def __init__(self, *, k: int = 10, iters: int = 100, vocab: Union[list, int]) -> None:
-        super(LDA, self).__init__()
-        self.this = None
+    def __init__(self, *, hyperparams: HyperParams, random_seed: int = 0, docker_containers: typing.Union[typing.Dict[str, str], None] = None) -> None:
+        #super(LDA, self).__init__()
+        self._this = None
+        self._k = hyperparams['k']
+        self._iters = hyperparams['iters']
+        self._vocab = hyperparams['vocab']
 
-        if isinstance(vocab, int):
-            if vocab < 0:
-                raise ValueError('Vocab size must be non-negative!')
-            vocab = [''.join(['w',i]) for i in range(vocab)]
-        elif isinstance(vocab, list):
-            if len(vocab) > 0:
-                if not isinstance(vocab[0], str):
-                    raise ValueError('Vocab must be list of stringss!')
-        else:
-            raise NotImplementedError('This type of vocab is not implemented')
+        self._training_inputs = None  # type: Inputs
+        self._validation_inputs = None # type: Inputs
+        self._fitted = False
+        self._ext = None
+
+        self.hyperparams = hyperparams
+        self.random_seed = random_seed
+        self.docker_containers = docker_containers
         
-        self.this = ldac.new(k, iters, vocab)
-        self.training_inputs = None  # type: Inputs
-        self.validation_inputes = None # type: Inputs
-        self.fitted = False
-        self.ext = None
 
     def __del__(self):
-        if self.this is not None:
-            ldac.delete(self.this, self.ext)
+        if self._this is not None:
+            ldac.delete(self._this, self._ext)
         
-    def set_training_data(self, *, training_inputs: Inputs, validation_inputs: Inputs = None) -> None:
+    def set_training_data(self, *, training_inputs: Inputs, validation_inputs: Inputs) -> None:
         """
         Sets training data for LDA.
 
@@ -78,23 +82,27 @@ class LDA(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
             A list of 1d numpy array of dtype uint32. Each numpy array contains a document with each token mapped to its word id. This represents validation docs to validate the results learned after each iteration of canopy algorithm.
         """
 
-        self.training_inputs = training_inputs
-        self.validation_inputes = validation_inputs
-        self.fitted = False
+        self._training_inputs = training_inputs
+        self._validation_inputs = validation_inputs
+
+        vocab = [''.join(['w',str(i)]) for i in range(self._vocab)]
+        self._this = ldac.new(self._k, self._iters, vocab)
+        
+        self._fitted = False
 
     
     def fit(self) -> None:
         """
         Inference on the latent Dirichley allocation model
         """
-        if self.fitted:
+        if self._fitted:
             return
 
-        if self.training_inputs is None:
+        if self._training_inputs is None:
             raise ValueError("Missing training data.")
 
-        ldac.fit(self.this, self.training_inputs, self.validation_inputes)
-        self.fitted = True
+        ldac.fit(self._this, self._training_inputs, self._validation_inputs)
+        self._fitted = True
 
     def get_call_metadata(self) -> bool:
         """
@@ -106,7 +114,7 @@ class LDA(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
             True/false status of fitting.
 
         """
-        return self.fitted
+        return self._fitted
         
     def produce(self, *, inputs: Inputs) -> Outputs:
         """
@@ -123,7 +131,7 @@ class LDA(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
             A list of 1d numpy array which represents index of the topic each token belongs to.
 
         """
-        return ldac.predict(self.this, inputs)
+        return ldac.predict(self._this, inputs)
 
     def evaluate(self, *, inputs: Inputs) -> float:
         """
@@ -139,9 +147,9 @@ class LDA(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
         score : float
             Final per-token log likelihood (-ve log perplexity).
         """
-        return ldac.evaluate(self.this, inputs)
+        return ldac.evaluate(self._this, inputs)
  
-    def get_top_words(self, *, num_top: int = 15) -> Outputs:
+    def produce_top_words(self, *, num_top: int) -> Outputs:
         """
         Get the top words of each topic for this model.
 
@@ -156,9 +164,9 @@ class LDA(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
             A list of size k containing list of size num_top words.
         """
 
-        return ldac.top_words(self.this, num_top)
+        return ldac.top_words(self._this, num_top)
 
-    def get_topic_matrix(self) -> np.ndarray:
+    def produce_topic_matrix(self) -> Predicts:
         """
         Get current word|topic distribution matrix for this model.
 
@@ -168,9 +176,9 @@ class LDA(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
             A numpy array of shape (vocab_size,k) with each column containing the word|topic distribution.
         """
 
-        if self.ext is None:
-            self.ext = ldac.topic_matrix(self.this)
-        return self.ext
+        if self._ext is None:
+            self._ext = ldac.topic_matrix(self._this)
+        return self._ext
     
     def get_params(self) -> Params:
         """
@@ -184,7 +192,7 @@ class LDA(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
             A named tuple of parameters.
         """
 
-        return Params(topic_matrix=ldac.serialize(self.this))
+        return Params(topic_matrix=ldac.serialize(self._this))
 
     def set_params(self, *, params: Params) -> None:
         """
@@ -197,7 +205,7 @@ class LDA(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params]):
         params : Params
             A named tuple of parameters.
         """
-        self.this = ldac.deserialize(params.topic_matrix)
+        self.this = ldac.deserialize(params['topic_matrix'])
 
     def set_random_seed(self, *, seed: int) -> None:
         """
