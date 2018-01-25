@@ -1,5 +1,5 @@
 from .covertree import CoverTree
-#from .kmeans import KMeans, init_covertree, init_kmeanspp
+from .kmeans import KMeans
 #from .gmm import GMM
 #from .lda import LDA
 #from .hdp import HDP

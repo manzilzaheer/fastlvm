@@ -2,10 +2,6 @@ from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext as _build_ext
 import sys
 
-import pip
-pip.main(['install', 'git+ssh://git@gitlab.datadrivendiscovery.org/d3m/d3m.git'])
-pip.main(['install', 'git+ssh://git@gitlab.datadrivendiscovery.org/d3m/primitive-interfaces.git'])
-
 PACKAGE_NAME = 'fastlvm'
 MINIMUM_PYTHON_VERSION = 3, 5
 
@@ -81,12 +77,12 @@ setup ( name = 'fastlvm',
     keywords = 'd3m_primitive',
     cmdclass={'build_ext':build_ext},
     install_requires=['numpy>=1.13.1', 'scipy>=0.17', 'scikit-learn>=0.18.1'],
-    ext_modules = [ covertreec_module ], #, kmeans_module, gmm_module, lda_module, hdp_module, glda_module, utils_module ],
+    ext_modules = [ covertreec_module, kmeans_module ], #, gmm_module, lda_module, hdp_module, glda_module, utils_module ],
     packages = ['fastlvm'],
     entry_points = {
         'd3m.primitives': [
-            'cmu.fastlvm.CoverTree = fastlvm:CoverTree'
-            #'cmu.fastlvm.KMeans = fastlvm:KMeans',
+            'cmu.fastlvm.CoverTree = fastlvm:CoverTree',
+            'cmu.fastlvm.KMeans = fastlvm:KMeans',
             #'cmu.fastlvm.GMM = fastlvm:GMM',
             #'cmu.fastlvm.LDA = fastlvm:LDA',
             #'cmu.fastlvm.GLDA = fastlvm:GLDA',

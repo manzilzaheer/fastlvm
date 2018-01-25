@@ -2,8 +2,9 @@ import time
 import pickle
 import numpy as np
 import scipy as sc
-from fastlvm import CoverTree
-from fastlvm.covertree import HyperParams
+from fastlvm import CoverTree, KMeans
+from fastlvm.covertree import HyperParams as onehp
+from fastlvm.kmeans import HyperParams as twohp
 #from d3m.primitives.cmu.fastlvm import CoverTree, KMeans, GMM, LDA, GLDA
 #from fastlvm import read_corpus
 from sklearn.neighbors import NearestNeighbors
@@ -29,7 +30,7 @@ y = np.require(y, requirements=['A', 'C', 'O', 'W'])
 #pdb.set_trace()
 
 print('======== Checks for Search ==========')
-hp = HyperParams(trunc=-1)
+hp = onehp(trunc=-1)
 ct = CoverTree(hyperparams=hp)
 ct.set_training_data(inputs=x)
 t = gt()
@@ -81,7 +82,8 @@ else:
 print('======== Checks for Clustering ==========')
 print('Building clustering data structures')
 skm = sKMeans(K, 'k-means++', 1, 10, verbose=0)
-ctm = KMeans(k = K, iters = 10, initial_centres = 'covertree', data = x)
+hp = twohp(k = K, iters = 10, initialization = 'covertree')
+ctm = KMeans(hyperparams=hp)
 ctm.set_training_data(training_inputs = x, validation_inputs = y)
 
 t = gt()
@@ -100,7 +102,7 @@ print()
 print('Test get/set params: ')
 p = ctm.get_params()
 ctm = None
-ct_new = KMeans(k = K, iters = 10, initial_centres = 'covertree', data = x)
+ct_new = KMeans(hyperparams=hp)
 ct_new.set_params(params=p)
 a_new = ct_new.evaluate(inputs=y)
 if np.abs(a_new - a) < 1e-9*np.abs(a):
