@@ -2,12 +2,12 @@ import gmmc
 
 import numpy as np
 import pdb
-import typing
+import typing, os, sys
 
 from primitive_interfaces.unsupervised_learning import UnsupervisedLearnerPrimitiveBase
 import d3m_metadata
 from d3m_metadata.metadata import PrimitiveMetadata
-from d3m_metadata import hyperparams
+from d3m_metadata import hyperparams, utils
 from d3m_metadata import params
 
 
@@ -57,7 +57,8 @@ class GMM(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams]
         "installation": [
         {
             "type": "PIP",
-            "package_uri": "git+https://github.com/manzilzaheer/fastlvm.git@d3m"
+            "package_uri": 'git+https://github.com/manzilzaheer/fastlvm.git@d3m@{git_commit}#egg=fastlvm'.format(
+                                          git_commit=utils.current_git_commit(os.path.dirname(__file__)))
         }
         ]
     })
