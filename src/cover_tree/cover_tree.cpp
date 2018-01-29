@@ -11,7 +11,7 @@ double* CoverTree::compute_pow_table()
 double* CoverTree::powdict = compute_pow_table();
 
 /******************************* Insert ***********************************************/
-bool CoverTree::insert(CoverTree::Node* current, const pointType& p)
+bool CoverTree::insert(CoverTree::Node* current, const pointType& p, unsigned UID)
 {
     bool result = false;
 #ifdef DEBUG
@@ -59,7 +59,7 @@ bool CoverTree::insert(CoverTree::Node* current, const pointType& p)
             if (child->maxdistUB < dist_child)
                 child->maxdistUB = dist_child;
             current->mut.unlock_shared();
-            result = insert(child, p);
+            result = insert(child, p, UID);
             flag = false;
             break;
         }
@@ -73,8 +73,8 @@ bool CoverTree::insert(CoverTree::Node* current, const pointType& p)
         // check if insert is still valid, i.e. no other point was inserted else restart
         if (num_children==current->children.size())
         {
-            int new_id = N++;
-            current->setChild(p, new_id);
+	    int new_id = N++;
+            current->setChild(p, UID, new_id);
             result = true;
             current->mut.unlock();
             
@@ -87,7 +87,7 @@ bool CoverTree::insert(CoverTree::Node* current, const pointType& p)
         else
         {
             current->mut.unlock();
-            result = insert(current, p);
+            result = insert(current, p, UID);
         }
         // if (min_scale > current->level - 1)
         // {
@@ -183,7 +183,7 @@ bool CoverTree::insert(CoverTree::Node* current, const pointType& p)
     // return result;
 // }
 
-bool CoverTree::insert(const pointType& p)
+bool CoverTree::insert(const pointType& p, unsigned UID)
 {
     bool result = false;
     id_valid = false;
@@ -229,6 +229,7 @@ bool CoverTree::insert(const pointType& p)
         temp->_p = p;
         temp->level = root->level + 1;
         temp->ID = N++;
+	temp->UID = UID;
         temp->maxdistUB = fn.second; //powdict[temp->level+1025];
         //temp->parent = NULL;
         temp->children.push_back(root);
@@ -243,7 +244,7 @@ bool CoverTree::insert(const pointType& p)
     else
     {
         //root->tempDist = root->dist(p);
-        result = insert(root, p);
+      result = insert(root, p, UID);
     }
     global_mut.unlock_shared();
     return result;
@@ -872,7 +873,7 @@ CoverTree::CoverTree(const std::vector<pointType>& pList, int truncateArg /*= 0*
     if (50000 >= numPoints)
     {
         for (size_t i = 0; i < numPoints-1; ++i){
-            if(!insert(pList[idx[i]]))
+	    if(!insert(pList[idx[i]], idx[i]))
                 std::cout << "Insert failed!!!" << std::endl;
         }
     }
@@ -880,13 +881,13 @@ CoverTree::CoverTree(const std::vector<pointType>& pList, int truncateArg /*= 0*
     {
         for (size_t i = 0; i < 50000; ++i){
             utils::progressbar(i, 50000);
-            if(!insert(pList[idx[i]]))
+            if(!insert(pList[idx[i]], idx[i]))
                 std::cout << "Insert failed!!!" << std::endl;
         }
         utils::progressbar(50000, 50000);
         std::cerr<<std::endl;
         utils::parallel_for_progressbar(50000, numPoints-1, [&](size_t i)->void{
-            if(!insert(pList[idx[i]]))
+            if(!insert(pList[idx[i]], idx[i]))
                 std::cout << "Insert failed!!!" << std::endl;
         });
     }
@@ -933,7 +934,7 @@ CoverTree::CoverTree(const Eigen::MatrixXd& pMatrix, int truncateArg /*= 0*/)
     if (50000 >= numPoints)
     {
         for (size_t i = 0; i < numPoints-1; ++i){
-            if(!insert(pMatrix.col(idx[i])))
+	    if(!insert(pMatrix.col(idx[i]), idx[i]))
                 std::cout << "Insert failed!!!" << std::endl;
         }
     }
@@ -941,13 +942,13 @@ CoverTree::CoverTree(const Eigen::MatrixXd& pMatrix, int truncateArg /*= 0*/)
     {
         for (size_t i = 0; i < 50000; ++i){
             utils::progressbar(i, 50000);
-            if(!insert(pMatrix.col(idx[i])))
+            if(!insert(pMatrix.col(idx[i]), idx[i]))
                 std::cout << "Insert failed!!!" << std::endl;
         }
         utils::progressbar(50000, 50000);
         std::cerr<<std::endl;
         utils::parallel_for_progressbar(50000, numPoints-1, [&](size_t i)->void{
-            if(!insert(pMatrix.col(idx[i])))
+            if(!insert(pMatrix.col(idx[i]), idx[i]))
                 std::cout << "Insert failed!!!" << std::endl;
         });
     }
@@ -994,7 +995,7 @@ CoverTree::CoverTree(const Eigen::Map<Eigen::MatrixXd>& pMatrix, int truncateArg
     if (50000 >= numPoints)
     {
         for (size_t i = 0; i < numPoints-1; ++i){
-            if(!insert(pMatrix.col(idx[i])))
+	    if(!insert(pMatrix.col(idx[i]), idx[i]))
                 std::cout << "Insert failed!!!" << std::endl;
         }
     }
@@ -1002,13 +1003,13 @@ CoverTree::CoverTree(const Eigen::Map<Eigen::MatrixXd>& pMatrix, int truncateArg
     {
         for (size_t i = 0; i < 50000; ++i){
             utils::progressbar(i, 50000);
-            if(!insert(pMatrix.col(idx[i])))
+            if(!insert(pMatrix.col(idx[i]), idx[i]))
                 std::cout << "Insert failed!!!" << std::endl;
         }
         utils::progressbar(50000, 50000);
         std::cerr<<std::endl;
         utils::parallel_for_progressbar(50000, numPoints-1, [&](size_t i)->void{
-            if(!insert(pMatrix.col(idx[i])))
+            if(!insert(pMatrix.col(idx[i]), idx[i]))
                 std::cout << "Insert failed!!!" << std::endl;
         });
     }
@@ -1055,7 +1056,7 @@ CoverTree::CoverTree(const std::vector<SuffStatsOne>& clusters, int truncateArg 
     if (50000 >= numPoints)
     {
         for (size_t i = 0; i < numPoints-1; ++i){
-            if(!insert(clusters[idx[i]].get_mean()))
+	    if(!insert(clusters[idx[i]].get_mean(), idx[i]))
                 std::cout << "Insert failed!!!" << std::endl;
         }
     }
@@ -1063,13 +1064,13 @@ CoverTree::CoverTree(const std::vector<SuffStatsOne>& clusters, int truncateArg 
     {
         for (size_t i = 0; i < 50000; ++i){
             utils::progressbar(i, 50000);
-            if(!insert(clusters[idx[i]].get_mean()))
+            if(!insert(clusters[idx[i]].get_mean(), idx[i]))
                 std::cout << "Insert failed!!!" << std::endl;
         }
         utils::progressbar(50000, 50000);
         std::cerr<<std::endl;
         utils::parallel_for_progressbar(50000, numPoints-1, [&](size_t i)->void{
-            if(!insert(clusters[idx[i]].get_mean()))
+            if(!insert(clusters[idx[i]].get_mean(), idx[i]))
                 std::cout << "Insert failed!!!" << std::endl;
         });
     }
@@ -1278,7 +1279,7 @@ CoverTree* CoverTree::from_multimachine(const Eigen::Map<Eigen::MatrixXd>& pMatr
             utils::parallel_for_progressbar(0, numPoints, [&](size_t i)->void{
                 //for (int i = begin + 1; i < end; ++i){
                 //utils::progressbar(i, end-50000);
-                if(!ct->insert(pMatrix_r.col(i))){
+                if(!ct->insert(pMatrix_r.col(i), i)){
                     std::cout << "Insert failed!!!" << std::endl;
                     #ifdef DEBUG
                     fout << "Insert failed!!!" << std::endl;

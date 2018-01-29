@@ -117,9 +117,9 @@ class CoverTree(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperP
             raise ValueError('Fit model first')
 
         if k == 1:
-            results = covertreec.NearestNeighbour(self._this, inputs)
+            results, _ = covertreec.NearestNeighbour(self._this, inputs)
         else:
-            results = covertreec.kNearestNeighbours(self._this, inputs, k)
+            results, _ = covertreec.kNearestNeighbours(self._this, inputs, k)
         
         return results
 

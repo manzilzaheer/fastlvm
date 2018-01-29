@@ -2,14 +2,14 @@ import time
 import pickle
 import numpy as np
 import scipy as sc
-from fastlvm import CoverTree, KMeans, GMM, LDA, GLDA, HDP
+#from fastlvm import CoverTree, KMeans, GMM, LDA, GLDA, HDP
 from fastlvm.covertree import HyperParams as onehp
 from fastlvm.kmeans import HyperParams as twohp
 from fastlvm.gmm import HyperParams as threehp
 from fastlvm.lda import HyperParams as fourhp
 from fastlvm.glda import HyperParams as fivehp
 from fastlvm.hdp import HyperParams as sixhp
-#from d3m.primitives.cmu.fastlvm import CoverTree, KMeans, GMM, LDA, GLDA
+from d3m.primitives.cmu.fastlvm import CoverTree, KMeans, GMM, LDA, GLDA, HDP
 from fastlvm import read_corpus
 from sklearn.neighbors import NearestNeighbors
 from sklearn.cluster import KMeans as sKMeans
@@ -46,6 +46,7 @@ print('Test Nearest Neighbour: ')
 t = gt()
 a = ct.produce(inputs=y, k=1)
 b_t = gt() - t
+a = np.squeeze(x[a])
 print("Query time:", b_t, "seconds")
 nbrs = NearestNeighbors(n_neighbors=1, algorithm='brute').fit(x)
 distances, indices = nbrs.kneighbors(y)
@@ -64,7 +65,7 @@ b_t = gt() - t
 print("Query time:", b_t, "seconds")
 nbrs = NearestNeighbors(n_neighbors=3, algorithm='brute').fit(x)
 distances, indices = nbrs.kneighbors(y)
-if np.all(a==x[indices]):
+if np.all(x[a]==x[indices]):
     print("Test for k-Nearest Neighbours passed")
 else:
     print("Test for k-Nearest Neighbours failed")

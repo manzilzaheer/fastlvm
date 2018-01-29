@@ -1,4 +1,5 @@
-﻿# ifndef _COVER_TREE_H
+﻿
+# ifndef _COVER_TREE_H
 # define _COVER_TREE_H
 
 //#define DEBUG
@@ -37,6 +38,7 @@ public:
         int level;                          // current level of the node
         double maxdistUB;                   // upper bound of distance to any of descendants
         unsigned ID;                        // unique ID of current node
+        unsigned UID;                       // external ID for current node
         //Node* parent;                       // parent of current node
 
         mutable std::shared_timed_mutex mut;// lock for current node
@@ -58,13 +60,14 @@ public:
         {
             return (_p - n->_p).norm();
         }
-        Node* setChild(const pointType& pIns, int new_id=-1)   // insert a new child of current node with point pIns
+        Node* setChild(const pointType& pIns, unsigned UID = 0, int new_id=-1)   // insert a new child of current node with point pIns
         {
             Node* temp = new Node;
             temp->_p = pIns;
             temp->level = level - 1;
             temp->maxdistUB = 0; // powdict[level + 1024];
             temp->ID = new_id;
+	    temp->UID = UID;
             //temp->parent = this;
             children.push_back(temp);
             return temp;
@@ -164,7 +167,7 @@ protected:
     std::shared_timed_mutex global_mut;	// lock for changing the root
 
     /*** Insert point or node at current node ***/
-    bool insert(Node* current, const pointType& p);
+    bool insert(Node* current, const pointType& p, unsigned UID);
     //bool insert(Node* current, Node* p);
 
     /*** Nearest Neighbour search ***/
@@ -227,7 +230,7 @@ public:
 
     
     /*** Insert point p into the cover tree ***/
-    bool insert(const pointType& p);
+    bool insert(const pointType& p, unsigned UID);
 
     /*** Remove point p into the cover tree ***/
     bool remove(const pointType& p) {return false;}

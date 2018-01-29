@@ -141,7 +141,7 @@ static PyObject *covertreec_insert(PyObject *self, PyObject *args) {
   Eigen::Map<pointType> value(fnp, PyArray_SIZE(in_array));
 
   obj = reinterpret_cast< CoverTree * >(int_ptr);
-  obj->insert(value);
+  obj->insert(value, 0);
 
   Py_RETURN_NONE;
 }
@@ -193,14 +193,18 @@ static PyObject *covertreec_nn(PyObject *self, PyObject *args) {
 
   //obj->dist_count.clear();
 
-  double *results = new double[numDims*numPoints];
+  //double *results = new double[numDims*numPoints];
+  double *dist = new double[numPoints];
+  long *indices = new long[numPoints];
   utils::parallel_for_progressbar(0, numPoints, [&](npy_intp i)->void{
   //for(npy_intp i = 0; i < numPoints; ++i) {
     std::pair<CoverTree::Node*, double> ct_nn = obj->NearestNeighbour(queryPts.col(i));
-    double *data = ct_nn.first->_p.data();
-    npy_intp offset = i*numDims;
-    for(npy_intp j=0; j<numDims; ++j)
-      results[offset++] = data[j];
+    //double *data = ct_nn.first->_p.data();
+    npy_intp offset = i;
+    dist[offset] = ct_nn.second;
+    indices[offset++] = ct_nn.first->UID;
+    //for(npy_intp j=0; j<numDims; ++j)
+    //  results[offset++] = data[j];
   });
   //std::pair<CoverTree::Node*, double> cnn = obj->NearestNeighbour(value);
 
@@ -214,12 +218,14 @@ static PyObject *covertreec_nn(PyObject *self, PyObject *args) {
   // std::cout << cnn.first->_p << std::endl;
   //Py_RETURN_NONE;
 
-  npy_intp dims[2] = {numPoints, numDims};
-  PyObject *out_array = PyArray_SimpleNewFromData(2, dims, NPY_FLOAT64, results);
-  PyArray_ENABLEFLAGS((PyArrayObject *)out_array, NPY_ARRAY_OWNDATA);
+  npy_intp dims[1] = {numPoints};
+  PyObject *out_dist = PyArray_SimpleNewFromData(1, dims, NPY_FLOAT64, dist);
+  PyArray_ENABLEFLAGS((PyArrayObject *)out_dist, NPY_ARRAY_OWNDATA);
+  PyObject *out_indices = PyArray_SimpleNewFromData(1, dims, NPY_LONG, indices);
+  PyArray_ENABLEFLAGS((PyArrayObject *)out_indices, NPY_ARRAY_OWNDATA);
 
   //Py_INCREF(out_array);
-  return out_array;
+  return Py_BuildValue("NN", out_indices, out_dist);
 }
 
 static PyObject *covertreec_knn(PyObject *self, PyObject *args) {
@@ -244,15 +250,19 @@ static PyObject *covertreec_knn(PyObject *self, PyObject *args) {
 
   obj = reinterpret_cast< CoverTree * >(int_ptr);
 
-  double *results = new double[k*numDims*numPoints];
+  //double *results = new double[k*numDims*numPoints];
+  long *indices = new long[k*numPoints];
+  double *dist = new double[k*numPoints];
   utils::parallel_for_progressbar(0, numPoints, [&](npy_intp i)->void{
     std::vector<std::pair<CoverTree::Node*, double>> ct_nn = obj->kNearestNeighbours(queryPts.col(i), k);
-    npy_intp offset = k*numDims*i;
+    npy_intp offset = k*i;
     for(long t=0; t<k; ++t)
     {
-      double *data = ct_nn[t].first->_p.data();
-      for(long j=0; j<numDims; ++j)
-        results[offset++] = data[j];
+      indices[offset] = ct_nn[t].first->UID;
+      dist[offset++] = ct_nn[t].second;
+      //double *data = ct_nn[t].first->_p.data();
+      //for(long j=0; j<numDims; ++j)
+      //  results[offset++] = data[j];
     }
   });
   //std::pair<CoverTree::Node*, double> cnn = obj->NearestNeighbour(value);
@@ -260,12 +270,17 @@ static PyObject *covertreec_knn(PyObject *self, PyObject *args) {
   // std::cout << cnn.first->_p << std::endl;
   //Py_RETURN_NONE;
 
-  npy_intp dims[3] = {numPoints, k, numDims};
-  PyObject *out_array = PyArray_SimpleNewFromData(3, dims, NPY_FLOAT64, results);
-  PyArray_ENABLEFLAGS((PyArrayObject *)out_array, NPY_ARRAY_OWNDATA);
+  npy_intp dims[2] = {numPoints, k};
+  PyObject *out_indices = PyArray_SimpleNewFromData(2, dims, NPY_LONG, indices);
+  PyArray_ENABLEFLAGS((PyArrayObject *)out_indices, NPY_ARRAY_OWNDATA);
+
+  PyObject *out_dist = PyArray_SimpleNewFromData(2, dims, NPY_FLOAT64, dist);
+  PyArray_ENABLEFLAGS((PyArrayObject *)out_dist, NPY_ARRAY_OWNDATA);
 
   //Py_INCREF(out_array);
-  return out_array;
+  //return out_array;
+
+  return Py_BuildValue("NN", out_indices, out_dist);
 }
 
 static PyObject *covertreec_serialize(PyObject *self, PyObject *args)
