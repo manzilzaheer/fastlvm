@@ -4,15 +4,15 @@ import numpy as np
 import pdb
 import typing, os, sys
 
-from primitive_interfaces.unsupervised_learning import UnsupervisedLearnerPrimitiveBase
-import d3m_metadata
-from d3m_metadata.metadata import PrimitiveMetadata
-from d3m_metadata import hyperparams, utils
-from d3m_metadata import params
+from d3m.primitive_interfaces.unsupervised_learning import UnsupervisedLearnerPrimitiveBase
+from d3m.primitive_interfaces import base
+from d3m import container, utils
+import d3m.metadata
+from d3m.metadata import hyperparams, base as metadata_base
+from d3m.metadata import params
 
-
-Inputs = d3m_metadata.container.ndarray  # type: np.ndarray
-Outputs = d3m_metadata.container.ndarray  # type: np.ndarray
+Inputs = container.ndarray  # type: np.ndarray
+Outputs = container.ndarray  # type: np.ndarray
 
 class Params(params.Params):
     mixture_parameters: bytes  # Byte stream represening coordinates of cluster centers.
@@ -41,7 +41,7 @@ def init_kmeanspp(k: int, points: Inputs) -> Outputs:
 
 class GMM(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams]):
 
-    metadata = PrimitiveMetadata({
+    metadata = metadata_base.PrimitiveMetadata({
         "id": "49af9397-d9a2-450f-93eb-c3b631ba6646",
         "version": "1.0",
         "name": "Gaussian Mixture Models",
@@ -64,8 +64,9 @@ class GMM(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams]
     })
 
 
-    def __init__(self, *, hyperparams: HyperParams, random_seed: int = 0, docker_containers: typing.Union[typing.Dict[str, str], None] = None) -> None:
+    def __init__(self, *, hyperparams: HyperParams) -> None:
         #super(GMM, self).__init__()
+        super().__init__(hyperparams = hyperparams)
         self._this = None
         self._k = hyperparams['k']
         self._iters = hyperparams['iters']
@@ -76,8 +77,6 @@ class GMM(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams]
         self._fitted = False
         
         self.hyperparams = hyperparams
-        self.random_seed = random_seed
-        self.docker_containers = docker_containers
                         
         
     def __del__(self) -> None:
@@ -142,7 +141,7 @@ class GMM(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams]
         """
         return self._fitted
         
-    def produce(self, *, inputs: Inputs) -> Outputs:
+    def produce(self, *, inputs: Inputs) -> base.CallResult[Outputs]:
         """
         Finds the closest cluster for the given set of test points using the learned model.
 
@@ -157,7 +156,7 @@ class GMM(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams]
             The index of the cluster each sample belongs to.
 
         """
-        return gmmc.predict(self._this, inputs)
+        return base.CallResult(gmmc.predict(self._this, inputs))
 
     def evaluate(self, *, inputs: Inputs) -> float:
         """

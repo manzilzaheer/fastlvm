@@ -4,15 +4,16 @@ import numpy as np
 import pdb
 import typing, sys, os
 
-from primitive_interfaces.unsupervised_learning import UnsupervisedLearnerPrimitiveBase
-import d3m_metadata
-from d3m_metadata.metadata import PrimitiveMetadata
-from d3m_metadata import hyperparams, utils
-from d3m_metadata import params
+from d3m.primitive_interfaces.unsupervised_learning import UnsupervisedLearnerPrimitiveBase
+from d3m.primitive_interfaces import base
+from d3m import container, utils
+import d3m.metadata
+from d3m.metadata import hyperparams, base as metadata_base
+from d3m.metadata import params
 
 
-Inputs = d3m_metadata.container.ndarray  # type: np.ndarray
-Outputs = d3m_metadata.container.ndarray  # type: np.ndarray
+Inputs = container.ndarray  # type: np.ndarray
+Outputs = container.ndarray  # type: np.ndarray
 
 class Params(params.Params):
     tree: bytes # Byte stream represening the tree.
@@ -22,7 +23,7 @@ class HyperParams(hyperparams.Hyperparams):
     
 class CoverTree(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams]):
 
-    metadata = PrimitiveMetadata({
+    metadata = metadata_base.PrimitiveMetadata({
          "id": "a5f7beda-1144-4185-8cbe-f1de36cedf56",
          "version": "1.0",
          "name": "Nearest Neighbor Search with Cover Trees",
@@ -45,15 +46,14 @@ class CoverTree(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperP
      })
 
 
-    def __init__(self, *, hyperparams: HyperParams, random_seed: int = 0, docker_containers: typing.Union[typing.Dict[str, str], None] = None) -> None:
+    def __init__(self, *, hyperparams: HyperParams) -> None:
+        super().__init__(hyperparams = hyperparams)
         #super(CoverTree, self).__init__()
         self._this = None
         self._trunc = hyperparams['trunc']
         self._training_inputs = None  # type: Inputs
         self._fitted = False
         self.hyperparams = hyperparams
-        self.random_seed = random_seed
-        self.docker_containers = docker_containers
 
     def __del__(self):
         if self._this is not None:
@@ -97,7 +97,7 @@ class CoverTree(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperP
         """
         return self.fitted
 
-    def produce(self, *, inputs: Inputs, k: int) -> Outputs:
+    def produce(self, *, inputs: Inputs, k: int) -> base.CallResult[Outputs]:
         """
         Finds the closest points for the given set of test points using the tree constructed.
 
@@ -120,7 +120,10 @@ class CoverTree(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperP
         else:
             results, _ = covertreec.kNearestNeighbours(self._this, inputs, k)
         
-        return results
+        return base.CallResult(results)
+
+    def multi_produce(self, *, produce_methods: typing.Sequence[str], inputs: Inputs, timeout: float = None, iterations: int = None, k: int) -> base.MultiCallResult:
+	    pass
 
     def get_params(self) -> Params:
         """

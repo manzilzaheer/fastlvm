@@ -4,16 +4,16 @@ import numpy as np
 import pdb
 import typing, os, sys
 
-from primitive_interfaces.unsupervised_learning import UnsupervisedLearnerPrimitiveBase
-import d3m_metadata
-from d3m_metadata.metadata import PrimitiveMetadata
-from d3m_metadata import hyperparams, utils
-from d3m_metadata import params
+from d3m.primitive_interfaces.unsupervised_learning import UnsupervisedLearnerPrimitiveBase
+from d3m.primitive_interfaces import base
+from d3m import container, utils
+import d3m.metadata
+from d3m.metadata import hyperparams, base as metadata_base
+from d3m.metadata import params
 
-
-Inputs = d3m_metadata.container.List[d3m_metadata.container.ndarray]  # type: list of np.ndarray
-Outputs = d3m_metadata.container.List[d3m_metadata.container.ndarray]  # type: list of np.ndarray
-Predicts = d3m_metadata.container.ndarray  # type: np.ndarray
+Inputs = container.List[container.ndarray]  # type: list of np.ndarray
+Outputs = container.List[container.ndarray]  # type: list of np.ndarray
+Predicts = container.ndarray  # type: np.ndarray
 
 class Params(params.Params):
     topic_matrix: bytes  # Byte stream represening topics
@@ -27,7 +27,7 @@ class HyperParams(hyperparams.Hyperparams):
 
 class LDA(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams]):
     
-    metadata = PrimitiveMetadata({
+    metadata = metadata_base.PrimitiveMetadata({
         "id": "f410b951-1cb6-481c-8d95-2d97b31d411d",
         "version": "1.0",
         "name": "Latent Dirichlet Allocation Topic Modelling",
@@ -50,8 +50,9 @@ class LDA(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams]
     })
     
 
-    def __init__(self, *, hyperparams: HyperParams, random_seed: int = 0, docker_containers: typing.Union[typing.Dict[str, str], None] = None) -> None:
+    def __init__(self, *, hyperparams: HyperParams) -> None:
         #super(LDA, self).__init__()
+        super().__init__(hyperparams = hyperparams)
         self._this = None
         self._k = hyperparams['k']
         self._iters = hyperparams['iters']
@@ -63,8 +64,6 @@ class LDA(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams]
         self._ext = None
 
         self.hyperparams = hyperparams
-        self.random_seed = random_seed
-        self.docker_containers = docker_containers
         
 
     def __del__(self):
@@ -117,7 +116,7 @@ class LDA(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams]
         """
         return self._fitted
         
-    def produce(self, *, inputs: Inputs) -> Outputs:
+    def produce(self, *, inputs: Inputs) -> base.CallResult[Outputs]:
         """
         Finds the token topic assignment (and consequently topic-per-document distribution) for the given set of docs using the learned model.
 
@@ -132,7 +131,7 @@ class LDA(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams]
             A list of 1d numpy array which represents index of the topic each token belongs to.
 
         """
-        return ldac.predict(self._this, inputs)
+        return base.CallResult(ldac.predict(self._this, inputs))
 
     def evaluate(self, *, inputs: Inputs) -> float:
         """
@@ -180,7 +179,10 @@ class LDA(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams]
         if self._ext is None:
             self._ext = ldac.topic_matrix(self._this)
         return self._ext
-    
+   
+    def multi_produce(self, *, produce_methods: typing.Sequence[str], inputs: Inputs, timeout: float = None, iterations: int = None, num_top: int) -> base.MultiCallResult:
+	        pass
+			 
     def get_params(self) -> Params:
         """
         Get parameters of LDA.
