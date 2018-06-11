@@ -88,6 +88,7 @@ setup ( name = 'fastlvm',
             'cmu.fastlvm.LDA = fastlvm:LDA',
             'cmu.fastlvm.GLDA = fastlvm:GLDA',
             'cmu.fastlvm.HDP = fastlvm:HDP',
+            'cmu.fastlvm = workaround_ignore_error',
         ],
     },
 )

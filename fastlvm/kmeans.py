@@ -18,9 +18,9 @@ class Params(params.Params):
     cluster_centers: bytes  # Byte stream represening coordinates of cluster centers.
 
 class HyperParams(hyperparams.Hyperparams):
-    k = hyperparams.UniformInt(lower=1, upper=10000, default=10, description='The number of clusters to form as well as the number of centroids to generate.')
-    iters = hyperparams.UniformInt(lower=1, upper=10000, default=100, description='The number of iterations of the Lloyd’s algorithm for K-Means clustering.')
-    initialization = hyperparams.Enumeration[str](values=['random', 'firstk', 'kmeanspp', 'covertree'], default='covertree', description="'random': choose k observations (rows) at random from data for the initial centroids. 'kmeanspp' : selects initial cluster centers by finding well spread out points using cover trees to speed up convergence. 'covertree' : selects initial cluster centers by sampling to speed up convergence.")
+    k = hyperparams.UniformInt(lower=1, upper=10000, default=10, semantic_types=['https://metadata.datadrivendiscovery.org/types/TuningParameter'], description='The number of clusters to form as well as the number of centroids to generate.')
+    iters = hyperparams.UniformInt(lower=1, upper=10000, default=100, semantic_types=['https://metadata.datadrivendiscovery.org/types/TuningParameter'], description='The number of iterations of the Lloyd’s algorithm for K-Means clustering.')
+    initialization = hyperparams.Enumeration[str](values=['random', 'firstk', 'kmeanspp', 'covertree'], default='covertree', semantic_types=['https://metadata.datadrivendiscovery.org/types/TuningParameter'], description="'random': choose k observations (rows) at random from data for the initial centroids. 'kmeanspp' : selects initial cluster centers by finding well spread out points using cover trees to speed up convergence. 'covertree' : selects initial cluster centers by sampling to speed up convergence.")
     
 def init_covertree(k: int, points: Inputs) -> Outputs:
     import covertreec
