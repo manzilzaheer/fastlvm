@@ -12,8 +12,8 @@ from d3m.metadata import hyperparams, base as metadata_base
 from d3m.metadata import params
 
 
-Inputs = container.List[container.ndarray]  # type: list of np.ndarray
-Outputs = container.List[container.ndarray]  # type: list of np.ndarray
+Inputs = container.List  # type: list of np.ndarray
+Outputs = container.List  # type: list of np.ndarray
 Predicts = container.ndarray  # type: np.ndarray
 
 class Params(params.Params):
