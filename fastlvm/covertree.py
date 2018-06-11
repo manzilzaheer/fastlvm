@@ -19,7 +19,7 @@ class Params(params.Params):
     tree: bytes # Byte stream represening the tree.
 
 class HyperParams(hyperparams.Hyperparams):
-    trunc = hyperparams.UniformInt(lower=-1, upper=100,default=-1,description='Level of truncation of the tree. -1 means no truncation.')
+    trunc = hyperparams.UniformInt(lower=-1, upper=100,default=-1,semantic_types=['https://metadata.datadrivendiscovery.org/types/TuningParameter'],description='Level of truncation of the tree. -1 means no truncation.')
     
 class CoverTree(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams]):
 

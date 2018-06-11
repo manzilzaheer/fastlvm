@@ -19,9 +19,9 @@ class Params(params.Params):
     topic_matrix: bytes  # Byte stream represening topics
 
 class HyperParams(hyperparams.Hyperparams):
-    k = hyperparams.UniformInt(lower=1, upper=10000, default=10, description='The number of clusters to form as well as the number of centroids to generate.')
-    iters = hyperparams.UniformInt(lower=1, upper=10000, default=100, description='The number of iterations of inference.')
-    vocab = hyperparams.UniformInt(lower=1, upper=1000000, default=1000, description='Vocab size.')
+    k = hyperparams.UniformInt(lower=1, upper=10000, default=10, semantic_types=['https://metadata.datadrivendiscovery.org/types/TuningParameter'], description='The number of clusters to form as well as the number of centroids to generate.')
+    iters = hyperparams.UniformInt(lower=1, upper=10000, default=100, semantic_types=['https://metadata.datadrivendiscovery.org/types/TuningParameter'], description='The number of iterations of inference.')
+    vocab = hyperparams.UniformInt(lower=1, upper=1000000, default=1000, semantic_types=['https://metadata.datadrivendiscovery.org/types/TuningParameter'], description='Vocab size.')
 
                 
 
