@@ -103,7 +103,7 @@ void MatrixBase<Derived>::makeHouseholder(
   * \param essential the essential part of the vector \c v
   * \param tau the scaling factor of the Householder transformation
   * \param workspace a pointer to working space with at least
-  *                  this->cols() * essential.size() entries
+  *                  this->cols() entries
   *
   * \sa MatrixBase::makeHouseholder(), MatrixBase::makeHouseholderInPlace(), 
   *     MatrixBase::applyHouseholderOnTheRight()
@@ -119,7 +119,7 @@ void MatrixBase<Derived>::applyHouseholderOnTheLeft(
   {
     *this *= Scalar(1)-tau;
   }
-  else
+  else if(tau!=Scalar(0))
   {
     Map<typename internal::plain_row_type<PlainObject>::type> tmp(workspace,cols());
     Block<Derived, EssentialPart::SizeAtCompileTime, Derived::ColsAtCompileTime> bottom(derived(), 1, 0, rows()-1, cols());
@@ -140,7 +140,7 @@ void MatrixBase<Derived>::applyHouseholderOnTheLeft(
   * \param essential the essential part of the vector \c v
   * \param tau the scaling factor of the Householder transformation
   * \param workspace a pointer to working space with at least
-  *                  this->cols() * essential.size() entries
+  *                  this->rows() entries
   *
   * \sa MatrixBase::makeHouseholder(), MatrixBase::makeHouseholderInPlace(), 
   *     MatrixBase::applyHouseholderOnTheLeft()
@@ -156,14 +156,14 @@ void MatrixBase<Derived>::applyHouseholderOnTheRight(
   {
     *this *= Scalar(1)-tau;
   }
-  else
+  else if(tau!=Scalar(0))
   {
     Map<typename internal::plain_col_type<PlainObject>::type> tmp(workspace,rows());
     Block<Derived, Derived::RowsAtCompileTime, EssentialPart::SizeAtCompileTime> right(derived(), 0, 1, rows(), cols()-1);
-    tmp.noalias() = right * essential.conjugate();
+    tmp.noalias() = right * essential;
     tmp += this->col(0);
     this->col(0) -= tau * tmp;
-    right.noalias() -= tau * tmp * essential.transpose();
+    right.noalias() -= tau * tmp * essential.adjoint();
   }
 }
 
