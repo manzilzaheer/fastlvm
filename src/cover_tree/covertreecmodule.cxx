@@ -19,7 +19,7 @@ static PyObject *new_covertreec(PyObject *self, PyObject *args)
   int trunc;
   int use_multi_core;
   PyArrayObject *in_array;
-  std::cout << "I am here" << std::endl;
+
   if (!PyArg_ParseTuple(args,"O!ip:new_covertreec", &PyArray_Type, &in_array, &trunc, &use_multi_core))
     return NULL;
 

@@ -51,7 +51,6 @@ namespace utils
     UnaryFunction parallel_for_each(InputIt first, InputIt last, UnaryFunction f)
     {
         unsigned cores = std::thread::hardware_concurrency();
-        std::cout<<"Number of cores: "<<cores<<std::endl;
 
         auto task = [&f](InputIt start, InputIt end)->void{
             for (; start < end; ++start)
