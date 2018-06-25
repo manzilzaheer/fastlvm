@@ -1,8 +1,6 @@
 ﻿# ifndef _COVER_TREE_H
 # define _COVER_TREE_H
 
-//#define DEBUG
-
 #include <atomic>
 #include <fstream>
 #include <iostream>
@@ -16,8 +14,6 @@
 #include "../commons/utils.h"
 
 #include <Eigen/Core>
-//typedef Eigen::VectorXd pointType;
-//typedef pointType::Scalar dtype;
 
 class CoverTree
 {
@@ -32,12 +28,12 @@ public:
     /*** structure for each node ***/
     struct Node
     {
-        pointType _p;                 // point associated with the node
+        pointType _p;                       // point associated with the node
         std::vector<Node*> children;        // list of children
         int level;                          // current level of the node
         double maxdistUB;                   // upper bound of distance to any of descendants
-        unsigned ID;                        // unique ID of current node
-        //Node* parent;                       // parent of current node
+        unsigned ID;                        // mutable ID of current node
+        unsigned UID;                       // external unique ID for current node
 
         mutable std::shared_timed_mutex mut;// lock for current node
         
@@ -50,53 +46,27 @@ public:
         {
             return powdict[level + 1023];
         }
-        double dist(const pointType& pp) const  // L2 distance between current node and point pp
+        double dist(const pointType& pp) const   // L2 distance between current node and point pp
         {
             return (_p - pp).norm();
         }
-        double dist(const Node* n) const              // L2 distance between current node and node n
+        double dist(const Node* n) const         // L2 distance between current node and node n
         {
             return (_p - n->_p).norm();
         }
-        Node* setChild(const pointType& pIns, int new_id=-1)   // insert a new child of current node with point pIns
+        Node* setChild(const pointType& pIns,    // insert a new child of current node with point pIns
+                       unsigned UID = 0, 
+                       int new_id=-1)   
         {
             Node* temp = new Node;
             temp->_p = pIns;
             temp->level = level - 1;
             temp->maxdistUB = 0; // powdict[level + 1024];
             temp->ID = new_id;
-            //temp->parent = this;
+            temp->UID = UID;
             children.push_back(temp);
             return temp;
         }
-        // Node* setChild(Node* pIns)          // insert the subtree pIns as child of current node
-        // {
-            // if( pIns->level != level - 1)
-            // {
-                // std::cout << "Invalid insertion! Covering and separation property may break!" << std::endl;
-                // Node* current = pIns;
-                // std::stack<Node*> travel;
-                // current->level = level-1;
-                // //current->maxdistUB = powdict[level + 1024];
-                // travel.push(current);
-                // while (travel.size() > 0)
-                // {
-                    // current = travel.top();
-                    // travel.pop();
-
-                    // for (const auto& child : *current)
-                    // {
-                        // child->level = current->level-1;
-                        // //child->maxdistUB = powdict[child->level + 1025];
-                        // travel.push(child);
-                    // }
-
-                // }
-            // }
-            // //pIns->parent = this;
-            // children.push_back(pIns);
-            // return pIns;
-        // }
 
         /*** erase child ***/
         void erase(size_t pos)
@@ -152,20 +122,16 @@ protected:
     Node* root;                         // Root of the tree
     std::atomic<int> min_scale;         // Minimum scale
     std::atomic<int> max_scale;         // Minimum scale
-    //int min_scale;                    // Minimum scale
-    //int max_scale;                    // Minimum scale
     int truncate_level;                 // Relative level below which the tree is truncated
     bool id_valid;
 
     std::atomic<unsigned> N;            // Number of points in the cover tree
-    //unsigned N;                       // Number of points in the cover tree
     unsigned D;                         // Dimension of the points
 
     std::shared_timed_mutex global_mut;	// lock for changing the root
 
     /*** Insert point or node at current node ***/
-    bool insert(Node* current, const pointType& p);
-    //bool insert(Node* current, Node* p);
+    bool insert(Node* current, const pointType& p, unsigned UID);
 
     /*** Nearest Neighbour search ***/
     void NearestNeighbour(Node* current, double dist_current, const pointType &p, std::pair<CoverTree::Node*, double>& nn) const;
@@ -196,13 +162,13 @@ public:
     // cover tree with one point as root
     CoverTree(const pointType& p, int truncate = -1);
     // cover tree using points in the list between begin and end
-    CoverTree(const std::vector<pointType>& pList, int truncate = -1);
+    CoverTree(const std::vector<pointType>& pList, int truncate = -1, bool use_multi_core = true);
     // cover tree using points in the list between begin and end
-    CoverTree(const Eigen::MatrixXd& pMatrix, int truncate = -1);
+    CoverTree(const Eigen::MatrixXd& pMatrix, int truncate = -1, bool use_multi_core = true);
     // cover tree using points in the list between begin and end
-    CoverTree(const Eigen::Map<Eigen::MatrixXd>& pMatrix, int truncate = -1);
+    CoverTree(const Eigen::Map<Eigen::MatrixXd>& pMatrix, int truncate = -1, bool use_multi_core = true);
     // cover tree using points in the clusters between begin and end
-    CoverTree(const std::vector<SuffStatsOne>& clusters, int truncate = -1);
+    CoverTree(const std::vector<SuffStatsOne>& clusters, int truncate = -1, bool use_multi_core = true);
 
     /*** Destructor ***/
     /*** Destructor: deallocating all memories by a post order traversal ***/
@@ -221,13 +187,12 @@ public:
     
     /*** construct cover tree using all points in the list of clusters ***/
     static CoverTree* from_clusters(const std::vector<SuffStatsOne>& clusters, int truncate = -1, bool use_multi_core = true);
-    
+        
     /*** construct cover tree from data in multiple machines ***/
     static CoverTree* from_multimachine(const Eigen::Map<Eigen::MatrixXd>& pMatrix_i, int truncate = -1);
 
-    
     /*** Insert point p into the cover tree ***/
-    bool insert(const pointType& p);
+    bool insert(const pointType& p, unsigned UID);
 
     /*** Remove point p into the cover tree ***/
     bool remove(const pointType& p) {return false;}
@@ -260,6 +225,7 @@ public:
     Eigen::MatrixXd get_points();
 
     /*** Count the points in the tree ***/
+    unsigned get_count();
     unsigned count_points();
     
     /*** Some spread out points in the space ***/

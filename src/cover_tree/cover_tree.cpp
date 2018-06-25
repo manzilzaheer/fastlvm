@@ -11,7 +11,7 @@ double* CoverTree::compute_pow_table()
 double* CoverTree::powdict = compute_pow_table();
 
 /******************************* Insert ***********************************************/
-bool CoverTree::insert(CoverTree::Node* current, const pointType& p)
+bool CoverTree::insert(CoverTree::Node* current, const pointType& p, unsigned UID)
 {
     bool result = false;
 #ifdef DEBUG
@@ -59,7 +59,7 @@ bool CoverTree::insert(CoverTree::Node* current, const pointType& p)
             if (child->maxdistUB < dist_child)
                 child->maxdistUB = dist_child;
             current->mut.unlock_shared();
-            result = insert(child, p);
+            result = insert(child, p, UID);
             flag = false;
             break;
         }
@@ -74,7 +74,7 @@ bool CoverTree::insert(CoverTree::Node* current, const pointType& p)
         if (num_children==current->children.size())
         {
             int new_id = N++;
-            current->setChild(p, new_id);
+            current->setChild(p, UID, new_id);
             result = true;
             current->mut.unlock();
             
@@ -87,103 +87,13 @@ bool CoverTree::insert(CoverTree::Node* current, const pointType& p)
         else
         {
             current->mut.unlock();
-            result = insert(current, p);
+            result = insert(current, p, UID);
         }
-        // if (min_scale > current->level - 1)
-        // {
-            // min_scale = current->level - 1;
-            // //std::cout << minScale << " " << maxScale << std::endl;
-        // }
     }
     return result;
 }
 
-// bool CoverTree::insert(CoverTree::Node* current, CoverTree::Node* p)
-// {
-    // bool result = false;
-    // std::cout << "Node insert called!";
-// #ifdef DEBUG
-    // if (current->dist(p) > current->covdist())
-        // throw std::runtime_error("Internal insert got wrong input!");
-    // if (truncateLevel > 0 && current->level < maxScale - truncateLevel)
-    // {
-        // std::cout << maxScale;
-        // std::cout << " skipped" << std::endl;
-        // return false;
-    // }
-// #endif
-    // if (truncate_level > 0 && current->level < max_scale-truncate_level)
-        // return false;
-    
-    // //acquire read lock
-    // current->mut.lock_shared();
-
-    // // Sort the children
-    // unsigned num_children = unsigned(current->children.size());
-    // std::vector<int> idx(num_children);
-    // std::iota(std::begin(idx), std::end(idx), 0);
-    // std::vector<double> dists(num_children);
-    // for (unsigned i = 0; i < num_children; ++i)
-        // dists[i] = current->children[i]->dist(p);
-    // auto comp_x = [&dists](int a, int b) { return dists[a] < dists[b]; };
-    // std::sort(std::begin(idx), std::end(idx), comp_x);
-
-    // bool flag = true;
-    // for (const auto& child_idx : idx)
-    // {
-        // Node* child = current->children[child_idx];
-        // double dist_child = dists[child_idx];
-        // if (dist_child <= 0.0)
-        // {
-            // //release read lock then enter child
-            // current->mut.unlock_shared();
-            // flag = false;
-            // break;
-        // }
-        // else if (dist_child <= child->covdist())
-        // {
-            // //release read lock then enter child
-            // current->mut.unlock_shared();
-            // result = insert(child, p);
-            // flag = false;
-            // break;
-        // }
-    // }
-
-    // if (flag)
-    // {
-        // //release read lock then acquire write lock
-        // current->mut.unlock_shared();
-        // current->mut.lock();
-        // // check if insert is still valid, i.e. no other point was inserted else restart
-        // if (num_children==current->children.size())
-        // {
-            // ++N;
-            // current->setChild(p);
-            // result = true;
-            // current->mut.unlock();
-            
-            // int local_min = min_scale.load();
-            // while( local_min > current->level - 1){
-                // min_scale.compare_exchange_weak(local_min, current->level - 1, std::memory_order_relaxed, std::memory_order_relaxed);
-                // local_min = min_scale.load();
-            // }
-        // }
-        // else
-        // {
-            // current->mut.unlock();
-            // result = insert(current, p);
-        // }
-        // // if (min_scale > current->level - 1)
-        // // {
-            // // min_scale = current->level - 1;
-            // // //std::cout << minScale << " " << maxScale << std::endl;
-        // // }
-    // }
-    // return result;
-// }
-
-bool CoverTree::insert(const pointType& p)
+bool CoverTree::insert(const pointType& p, unsigned UID)
 {
     bool result = false;
     id_valid = false;
@@ -214,36 +124,31 @@ bool CoverTree::insert(const pointType& p)
                 parent->children.pop_back();
                 std::pair<CoverTree::Node*, double> fni = FurthestNeighbour(current->_p);
                 current->level = root->level + 1;
-                //current->parent = NULL;
-                current->maxdistUB = fni.second; // powdict[current->level + 1025];
+                current->maxdistUB = fni.second;
                 current->children.push_back(root);
                 root = current;
             }
             else
             {
                 root->level += 1;
-                //root->maxdistUB = powdict[root->level + 1025];
             }
         }
         CoverTree::Node* temp = new CoverTree::Node;
         temp->_p = p;
         temp->level = root->level + 1;
         temp->ID = N++;
-        temp->maxdistUB = fn.second; //powdict[temp->level+1025];
-        //temp->parent = NULL;
+        temp->UID = UID;
+        temp->maxdistUB = fn.second;
         temp->children.push_back(root);
-        //root->parent = temp;
         root = temp;
         max_scale = root->level;
         result = true;
-        //std::cout << "Upward: " << minScale << " " << maxScale << std::endl;
         global_mut.unlock();
         global_mut.lock_shared();
     }
     else
     {
-        //root->tempDist = root->dist(p);
-        result = insert(root, p);
+        result = insert(root, p, UID);
     }
     global_mut.unlock_shared();
     return result;
@@ -433,7 +338,6 @@ void CoverTree::kNearestNeighbours(CoverTree::Node* current, double dist_current
     std::vector<int> idx(num_children);
     std::iota(std::begin(idx), std::end(idx), 0);
     std::vector<double> dists(num_children);
-    //dist_count[current->level].fetch_add(num_children, std::memory_order_relaxed);
     for (unsigned i = 0; i < num_children; ++i)
         dists[i] = current->children[i]->dist(p);
     auto comp_x = [&dists](int a, int b) { return dists[a] < dists[b]; };
@@ -621,6 +525,12 @@ char* CoverTree::preorder_pack(char* buff, CoverTree::Node* current) const
     std::copy(start, end, buff);
     buff += shift;
     
+    shift = sizeof(unsigned);
+    start = (char*)&(current->UID);
+    end = start + shift;
+    std::copy(start, end, buff);
+    buff += shift;
+    
     shift = sizeof(double);
     start = (char*)&(current->maxdistUB);
     end = start + shift;
@@ -673,17 +583,14 @@ void CoverTree::PrePost(CoverTree::Node*& current, char*& pre, char*& post)
     pre += sizeof(int);
     current->ID = *((unsigned *)pre);
     pre += sizeof(unsigned);
+    current->UID = *((unsigned *)pre);
+    pre += sizeof(unsigned);
     current->maxdistUB = *((double *)pre);
     pre += sizeof(double);
-    
-    // std::cout << current->_p << std::endl;
-    // std::cout << current->ID << std::endl;
-    // std::cout << *((unsigned*)post) << std::endl;
 
     // Construct subtrees until the root is found in the postorder list
     while (*((unsigned*)post) != current->ID)
     {
-        // std::cout << "I am in loop for " << current->ID << std::endl;
         CoverTree::Node* temp = NULL;
         PrePost(temp, pre, post);
         current->children.push_back(temp);
@@ -698,7 +605,7 @@ size_t CoverTree::msg_size() const
     return 2 * sizeof(unsigned)
         + sizeof(pointType::Scalar)*D*N
         + sizeof(int)*N
-        + sizeof(unsigned)*N
+        + sizeof(unsigned)*N*2
         + sizeof(double)*N
         + sizeof(unsigned)*N;
 }
@@ -706,15 +613,6 @@ size_t CoverTree::msg_size() const
 // Serialize to a buffer
 char* CoverTree::serialize() const
 {
-    //// check if valid id present
-    //if (!id_valid)
-    //{
-    // N = 0;
-    // generate_id(root);
-    // id_valid = true;
-    //}
-    //count_points();
-
     //Covert following to char* buff with following order
     // N | D | (points, levels) | List
     char* buff = new char[msg_size()];
@@ -760,11 +658,7 @@ void CoverTree::deserialize(char* buff)
 
     // pointer to postorder list
     char* post = buff + sizeof(pointType::Scalar)*D*N
-        + sizeof(int)*N + sizeof(unsigned)*N + sizeof(double)*N;
-        
-    // for(char *tmp = post; tmp < post + 4*N; tmp+=4)
-        // std::cout << *((unsigned*)tmp) << ", ";
-    // std::cout << std::endl;
+        + sizeof(int)*N + sizeof(unsigned)*N*2 + sizeof(double)*N;
 
     //reconstruction
     PrePost(root, buff, post);
@@ -827,12 +721,13 @@ CoverTree::CoverTree(const pointType& p, int truncateArg /*=-1*/)
     root = new CoverTree::Node;
     root->_p = p;
     root->ID = 0;
+    root->UID = 0;
     root->level = 0;
     root->maxdistUB = 0;
 }
 
 //constructor: cover tree using points in the list between begin and end
-CoverTree::CoverTree(const std::vector<pointType>& pList, int truncateArg /*= 0*/)
+CoverTree::CoverTree(const std::vector<pointType>& pList, int truncateArg /*=-1*/, bool use_multi_core /*=true*/)
 {
     size_t numPoints = pList.size();
 
@@ -867,33 +762,45 @@ CoverTree::CoverTree(const std::vector<pointType>& pList, int truncateArg /*= 0*
     root->level = scale_val; //-1000;
     root->maxdistUB = max_dist; // powdict[scale_val+1024];
     root->ID = 0;
+    root->UID = numPoints-1;
 
     //std::cout << "(" << pList[0].rows() << ", " << pList.size() << ")" << std::endl;
-    if (50000 >= numPoints)
+    if (use_multi_core)
     {
-        for (size_t i = 0; i < numPoints-1; ++i){
-            if(!insert(pList[idx[i]]))
-                std::cout << "Insert failed!!!" << std::endl;
+        if (50000 >= numPoints)
+        {
+            for (size_t i = 0; i < numPoints-1; ++i){
+                if(!insert(pList[idx[i]], idx[i]))
+                    std::cout << "Insert failed!!!" << std::endl;
+            }
+        }
+        else
+        {
+            for (size_t i = 0; i < 50000; ++i){
+                utils::progressbar(i, 50000);
+                if(!insert(pList[idx[i]], idx[i]))
+                    std::cout << "Insert failed!!!" << std::endl;
+            }
+            utils::progressbar(50000, 50000);
+            std::cerr<<std::endl;
+            utils::parallel_for_progressbar(50000, numPoints-1, [&](size_t i)->void{
+                if(!insert(pList[idx[i]], idx[i]))
+                    std::cout << "Insert failed!!!" << std::endl;
+            });
         }
     }
     else
     {
-        for (size_t i = 0; i < 50000; ++i){
-            utils::progressbar(i, 50000);
-            if(!insert(pList[idx[i]]))
+        for (size_t i = 0; i < numPoints-1; ++i){
+            utils::progressbar(i, numPoints-1);
+            if(!insert(pList[idx[i]], idx[i]))
                 std::cout << "Insert failed!!!" << std::endl;
         }
-        utils::progressbar(50000, 50000);
-        std::cerr<<std::endl;
-        utils::parallel_for_progressbar(50000, numPoints-1, [&](size_t i)->void{
-            if(!insert(pList[idx[i]]))
-                std::cout << "Insert failed!!!" << std::endl;
-        });
     }
 }
 
 //constructor: cover tree using points in the list between begin and end
-CoverTree::CoverTree(const Eigen::MatrixXd& pMatrix, int truncateArg /*= 0*/)
+CoverTree::CoverTree(const Eigen::MatrixXd& pMatrix, int truncateArg /*=-1*/, bool use_multi_core /*=true*/)
 {
     size_t numPoints = pMatrix.cols();
 
@@ -928,33 +835,45 @@ CoverTree::CoverTree(const Eigen::MatrixXd& pMatrix, int truncateArg /*= 0*/)
     root->level = scale_val; //-1000;
     root->maxdistUB = max_dist; // powdict[scale_val+1024];
     root->ID = 0;
+    root->UID = numPoints-1;
     
     //std::cout << "(" << pMatrix.rows() << ", " << pMatrix.cols() << ")" << std::endl;
-    if (50000 >= numPoints)
+    if (use_multi_core)
     {
-        for (size_t i = 0; i < numPoints-1; ++i){
-            if(!insert(pMatrix.col(idx[i])))
-                std::cout << "Insert failed!!!" << std::endl;
+        if (50000 >= numPoints)
+        {
+            for (size_t i = 0; i < numPoints-1; ++i){
+                if(!insert(pMatrix.col(idx[i]), idx[i]))
+                    std::cout << "Insert failed!!!" << std::endl;
+            }
+        }
+        else
+        {
+            for (size_t i = 0; i < 50000; ++i){
+                utils::progressbar(i, 50000);
+                if(!insert(pMatrix.col(idx[i]), idx[i]))
+                    std::cout << "Insert failed!!!" << std::endl;
+            }
+            utils::progressbar(50000, 50000);
+            std::cerr<<std::endl;
+            utils::parallel_for_progressbar(50000, numPoints-1, [&](size_t i)->void{
+                if(!insert(pMatrix.col(idx[i]), idx[i]))
+                    std::cout << "Insert failed!!!" << std::endl;
+            });
         }
     }
     else
     {
-        for (size_t i = 0; i < 50000; ++i){
-            utils::progressbar(i, 50000);
-            if(!insert(pMatrix.col(idx[i])))
+        for (size_t i = 0; i < numPoints-1; ++i){
+            utils::progressbar(i, numPoints-1);
+            if(!insert(pMatrix.col(idx[i]), idx[i]))
                 std::cout << "Insert failed!!!" << std::endl;
         }
-        utils::progressbar(50000, 50000);
-        std::cerr<<std::endl;
-        utils::parallel_for_progressbar(50000, numPoints-1, [&](size_t i)->void{
-            if(!insert(pMatrix.col(idx[i])))
-                std::cout << "Insert failed!!!" << std::endl;
-        });
     }
 }
 
 //constructor: cover tree using points in the list between begin and end
-CoverTree::CoverTree(const Eigen::Map<Eigen::MatrixXd>& pMatrix, int truncateArg /*= 0*/)
+CoverTree::CoverTree(const Eigen::Map<Eigen::MatrixXd>& pMatrix, int truncateArg /*=-1*/, bool use_multi_core /*=true*/)
 {
     size_t numPoints = pMatrix.cols();
     
@@ -989,33 +908,45 @@ CoverTree::CoverTree(const Eigen::Map<Eigen::MatrixXd>& pMatrix, int truncateArg
     root->level = scale_val; //-1000;
     root->maxdistUB = max_dist; // powdict[scale_val+1024];
     root->ID = 0;
+    root->UID = numPoints-1;
    
     //std::cout << "(" << pMatrix.rows() << ", " << pMatrix.cols() << ")" << std::endl;
-    if (50000 >= numPoints)
+    if (use_multi_core)
     {
-        for (size_t i = 0; i < numPoints-1; ++i){
-            if(!insert(pMatrix.col(idx[i])))
-                std::cout << "Insert failed!!!" << std::endl;
+        if (50000 >= numPoints)
+        {
+            for (size_t i = 0; i < numPoints-1; ++i){
+                if(!insert(pMatrix.col(idx[i]), idx[i]))
+                    std::cout << "Insert failed!!!" << std::endl;
+            }
+        }
+        else
+        {
+            for (size_t i = 0; i < 50000; ++i){
+                utils::progressbar(i, 50000);
+                if(!insert(pMatrix.col(idx[i]), idx[i]))
+                    std::cout << "Insert failed!!!" << std::endl;
+            }
+            utils::progressbar(50000, 50000);
+            std::cerr<<std::endl;
+            utils::parallel_for_progressbar(50000, numPoints-1, [&](size_t i)->void{
+                if(!insert(pMatrix.col(idx[i]), idx[i]))
+                    std::cout << "Insert failed!!!" << std::endl;
+            });
         }
     }
     else
     {
-        for (size_t i = 0; i < 50000; ++i){
-            utils::progressbar(i, 50000);
-            if(!insert(pMatrix.col(idx[i])))
+        for (size_t i = 0; i < numPoints-1; ++i){
+            utils::progressbar(i, numPoints-1);
+            if(!insert(pMatrix.col(idx[i]), idx[i]))
                 std::cout << "Insert failed!!!" << std::endl;
         }
-        utils::progressbar(50000, 50000);
-        std::cerr<<std::endl;
-        utils::parallel_for_progressbar(50000, numPoints-1, [&](size_t i)->void{
-            if(!insert(pMatrix.col(idx[i])))
-                std::cout << "Insert failed!!!" << std::endl;
-        });
     }
 }
 
 //constructor: cover tree using clusters in the list between begin and end
-CoverTree::CoverTree(const std::vector<SuffStatsOne>& clusters, int truncateArg /*= 0*/)
+CoverTree::CoverTree(const std::vector<SuffStatsOne>& clusters, int truncateArg /*=-1*/, bool use_multi_core /*=true*/)
 {
     size_t numPoints = clusters.size();
 
@@ -1050,28 +981,40 @@ CoverTree::CoverTree(const std::vector<SuffStatsOne>& clusters, int truncateArg 
     root->level = scale_val; //-1000;
     root->maxdistUB = max_dist; //powdict[scale_val+1024];
     root->ID = 0;
+    root->UID = numPoints-1;
 
     //std::cout << "(" << clusters[0].get_dim() << ", " << clusters.size() << ")" << std::endl;
-    if (50000 >= numPoints)
+    if (use_multi_core)
     {
-        for (size_t i = 0; i < numPoints-1; ++i){
-            if(!insert(clusters[idx[i]].get_mean()))
-                std::cout << "Insert failed!!!" << std::endl;
+        if (50000 >= numPoints)
+        {
+            for (size_t i = 0; i < numPoints-1; ++i){
+                if(!insert(clusters[idx[i]].get_mean(), idx[i]))
+                    std::cout << "Insert failed!!!" << std::endl;
+            }
+        }
+        else
+        {
+            for (size_t i = 0; i < 50000; ++i){
+                utils::progressbar(i, 50000);
+                if(!insert(clusters[idx[i]].get_mean(), idx[i]))
+                    std::cout << "Insert failed!!!" << std::endl;
+            }
+            utils::progressbar(50000, 50000);
+            std::cerr<<std::endl;
+            utils::parallel_for_progressbar(50000, numPoints-1, [&](size_t i)->void{
+                if(!insert(clusters[idx[i]].get_mean(), idx[i]))
+                    std::cout << "Insert failed!!!" << std::endl;
+            });
         }
     }
     else
     {
-        for (size_t i = 0; i < 50000; ++i){
-            utils::progressbar(i, 50000);
-            if(!insert(clusters[idx[i]].get_mean()))
+        for (size_t i = 0; i < numPoints-1; ++i){
+            utils::progressbar(i, numPoints-1);
+            if(!insert(clusters[idx[i]].get_mean(), idx[i]))
                 std::cout << "Insert failed!!!" << std::endl;
         }
-        utils::progressbar(50000, 50000);
-        std::cerr<<std::endl;
-        utils::parallel_for_progressbar(50000, numPoints-1, [&](size_t i)->void{
-            if(!insert(clusters[idx[i]].get_mean()))
-                std::cout << "Insert failed!!!" << std::endl;
-        });
     }
 }
 
@@ -1104,19 +1047,7 @@ CoverTree::~CoverTree()
 CoverTree* CoverTree::from_points(const std::vector<pointType>& pList, int truncate /*=-1*/, bool use_multi_core /*=true*/)
 {
     std::cout << "Faster Cover Tree with base " << CoverTree::base << std::endl;
-    CoverTree* cTree = NULL;
-    if (use_multi_core)
-    {
-        cTree = new CoverTree(pList, truncate);
-    }
-    else
-    {
-        cTree = new CoverTree(pList, truncate);
-    }
-
-    //cTree->calc_maxdist();
-    //cTree->print_levels();
-
+    CoverTree* cTree = new CoverTree(pList, truncate, use_multi_core);
     return cTree;
 }
 
@@ -1124,19 +1055,7 @@ CoverTree* CoverTree::from_points(const std::vector<pointType>& pList, int trunc
 CoverTree* CoverTree::from_matrix(const Eigen::MatrixXd& pMatrix, int truncate /*=-1*/, bool use_multi_core /*=true*/)
 {
     std::cout << "Faster Cover Tree with base " << CoverTree::base << std::endl;
-    CoverTree* cTree = NULL;
-    if (use_multi_core)
-    {
-        cTree = new CoverTree(pMatrix, truncate);
-    }
-    else
-    {
-        cTree = new CoverTree(pMatrix, truncate);
-    }
-
-    //cTree->calc_maxdist();
-    //cTree->print_levels();
-
+    CoverTree* cTree = new CoverTree(pMatrix, truncate, use_multi_core);
     return cTree;
 }
 
@@ -1144,38 +1063,15 @@ CoverTree* CoverTree::from_matrix(const Eigen::MatrixXd& pMatrix, int truncate /
 CoverTree* CoverTree::from_matrix(const Eigen::Map<Eigen::MatrixXd>& pMatrix, int truncate /*=-1*/, bool use_multi_core /*=true*/)
 {
     std::cout << "Faster Cover Tree with base " << CoverTree::base << std::endl;
-    CoverTree* cTree = NULL;
-    if (use_multi_core)
-    {
-        cTree = new CoverTree(pMatrix, truncate);
-    }
-    else
-    {
-        cTree = new CoverTree(pMatrix, truncate);
-    }
-
-    //cTree->calc_maxdist();
-    //cTree->print_levels();
-
+    CoverTree* cTree = new CoverTree(pMatrix, truncate, use_multi_core);
     return cTree;
 }
 
 //contructor: using cluster list
 CoverTree* CoverTree::from_clusters(const std::vector<SuffStatsOne>& clusters, int truncate /*=-1*/, bool use_multi_core /*=true*/)
 {
-    CoverTree* cTree = NULL;
-    if (use_multi_core)
-    {
-        cTree = new CoverTree(clusters, truncate);
-    }
-    else
-    {
-        cTree = new CoverTree(clusters, truncate);
-    }
-
-    //cTree->calc_maxdist();
-    //cTree->print_levels();
-
+    std::cout << "Faster Cover Tree with base " << CoverTree::base << std::endl;
+    CoverTree* cTree = new CoverTree(clusters, truncate, use_multi_core);
     return cTree;
 }
 
@@ -1269,6 +1165,8 @@ CoverTree* CoverTree::from_multimachine(const Eigen::Map<Eigen::MatrixXd>& pMatr
             fout << "Remote points received: " << std::endl;
             fout << numPoints << "\n" << pMatrix_r << std::endl;
             #endif
+            
+            size_t curr_size = ct->N.load();
 
             #ifdef DEBUG
             std::cout << "Merging at rank " << rank <<std::endl;
@@ -1278,7 +1176,7 @@ CoverTree* CoverTree::from_multimachine(const Eigen::Map<Eigen::MatrixXd>& pMatr
             utils::parallel_for_progressbar(0, numPoints, [&](size_t i)->void{
                 //for (int i = begin + 1; i < end; ++i){
                 //utils::progressbar(i, end-50000);
-                if(!ct->insert(pMatrix_r.col(i))){
+                if(!ct->insert(pMatrix_r.col(i), curr_size+i)){
                     std::cout << "Insert failed!!!" << std::endl;
                     #ifdef DEBUG
                     fout << "Insert failed!!!" << std::endl;
@@ -1616,6 +1514,13 @@ Eigen::Map<Eigen::MatrixXd> CoverTree::getBestInitialPoints(unsigned numBest, do
 }
 
 /******************************************* Functions to remove ***************************************************/
+
+//get current count of points
+unsigned CoverTree::get_count()
+{
+    return N.load();
+}
+
 
 unsigned CoverTree::count_points()
 {

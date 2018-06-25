@@ -51,6 +51,7 @@ namespace utils
     UnaryFunction parallel_for_each(InputIt first, InputIt last, UnaryFunction f)
     {
         unsigned cores = std::thread::hardware_concurrency();
+        std::cout<<"Number of cores: "<<cores<<std::endl;
 
         auto task = [&f](InputIt start, InputIt end)->void{
             for (; start < end; ++start)
@@ -192,7 +193,7 @@ namespace utils
         size_t right;
         Eigen::VectorXd res;
         const std::vector<Eigen::VectorXd>& pList;
-
+        static std::atomic<int> objectCount;
 
         void run()
         {
@@ -204,22 +205,26 @@ namespace utils
     public:
         ParallelAddList(const std::vector<Eigen::VectorXd>& pL) : pList(pL)
         {
+	    objectCount++;
             this->left = 0;
             this->right = pL.size();
             compute();
         }
         ParallelAddList(size_t left, size_t right, const std::vector<Eigen::VectorXd>& pL) : pList(pL)
         {
+	    objectCount++;
             this->left = left;
             this->right = right;
         }
 
         ~ParallelAddList()
-        {   }
+        {
+	    objectCount--;
+	}
 
         int compute()
         {
-            if (right - left < 500000)
+            if ((right - left < 500000) || (objectCount.load() > 128))
             {
                 run();
                 return 0;
@@ -256,7 +261,7 @@ namespace utils
         size_t right;
         Eigen::VectorXd res;
         const Eigen::MatrixXd& pMatrix;
-
+        static std::atomic<int> objectCount;
 
         void run()
         {
@@ -268,22 +273,26 @@ namespace utils
     public:
         ParallelAddMatrix(const Eigen::MatrixXd& pM) : pMatrix(pM)
         {
+	    objectCount++;
             this->left = 0;
             this->right = pM.cols();
             compute();
         }
         ParallelAddMatrix(size_t left, size_t right, const Eigen::MatrixXd& pM) : pMatrix(pM)
         {
+	    objectCount++;
             this->left = left;
             this->right = right;
         }
 
         ~ParallelAddMatrix()
-        {   }
+        {
+	    objectCount--;
+	}
 
         int compute()
         {
-            if (right - left < 500000)
+            if ((right - left < 500000) || (objectCount.load() > 128))
             {
                 run();
                 return 0;
@@ -320,7 +329,7 @@ namespace utils
         size_t right;
         Eigen::VectorXd res;
         const Eigen::Map<Eigen::MatrixXd>& pMatrix;
-
+        static std::atomic<int> objectCount;
 
         void run()
         {
@@ -332,22 +341,26 @@ namespace utils
     public:
         ParallelAddMatrixNP(const Eigen::Map<Eigen::MatrixXd>& pM) : pMatrix(pM)
         {
+	    objectCount++;
             this->left = 0;
             this->right = pM.cols();
             compute();
         }
         ParallelAddMatrixNP(size_t left, size_t right, const Eigen::Map<Eigen::MatrixXd>& pM) : pMatrix(pM)
         {
+	    objectCount++;
             this->left = left;
             this->right = right;
         }
 
         ~ParallelAddMatrixNP()
-        {   }
+        {
+	    objectCount--;
+	}
 
         int compute()
         {
-            if (right - left < 500000)
+            if ((right - left < 500000) || (objectCount.load() > 128))
             {
                 run();
                 return 0;
@@ -384,7 +397,7 @@ namespace utils
         size_t right;
         Eigen::VectorXd res;
         const std::vector<SuffStatsOne>& clusters;
-
+        static std::atomic<int> objectCount;
 
         void run()
         {
@@ -396,22 +409,26 @@ namespace utils
     public:
         ParallelAddClusters(const std::vector<SuffStatsOne>& cL) : clusters(cL)
         {
+	    objectCount++;
             this->left = 0;
             this->right = cL.size();
             compute();
         }
         ParallelAddClusters(size_t left, size_t right, const std::vector<SuffStatsOne>& cL) : clusters(cL)
         {
+	    objectCount++;
             this->left = left;
             this->right = right;
         }
 
         ~ParallelAddClusters()
-        {   }
+        {
+	    objectCount--;
+	}
 
         int compute()
         {
-            if (right - left < 500000)
+            if ((right - left < 500000) || (objectCount.load() > 128))
             {
                 run();
                 return 0;
@@ -449,7 +466,7 @@ namespace utils
         Eigen::VectorXd res;
         Eigen::VectorXd& vec;
         const std::vector<Eigen::VectorXd>& pList;
-
+        static std::atomic<int> objectCount;
 
         void run()
         {
@@ -461,22 +478,26 @@ namespace utils
     public:
         ParallelDistanceComputeList(const std::vector<Eigen::VectorXd>& pL, Eigen::VectorXd& v) : vec(v), pList(pL)
         {
+	    objectCount++;
             this->left = 0;
             this->right = pL.size();
             compute();
         }
         ParallelDistanceComputeList(size_t left, size_t right, const std::vector<Eigen::VectorXd>& pL, Eigen::VectorXd& v) : vec(v), pList(pL)
         {
+	    objectCount++;
             this->left = left;
             this->right = right;
         }
 
         ~ParallelDistanceComputeList()
-        {   }
+        {
+	    objectCount--;
+	}
 
         int compute()
         {
-            if (right - left < 10000)
+            if ((right - left < 10000) || (objectCount.load() > 128))
             {
                 run();
                 return 0;
@@ -514,7 +535,7 @@ namespace utils
         Eigen::VectorXd res;
         Eigen::VectorXd& vec;
         const Eigen::MatrixXd& pMatrix;
-
+        static std::atomic<int> objectCount;
 
         void run()
         {
@@ -526,22 +547,26 @@ namespace utils
     public:
         ParallelDistanceCompute(const Eigen::MatrixXd& pM, Eigen::VectorXd& v) : vec(v), pMatrix(pM)
         {
+            objectCount++;
             this->left = 0;
             this->right = pM.cols();
             compute();
         }
         ParallelDistanceCompute(size_t left, size_t right, const Eigen::MatrixXd& pM, Eigen::VectorXd& v) : vec(v), pMatrix(pM)
         {
+	    objectCount++;
             this->left = left;
             this->right = right;
         }
 
         ~ParallelDistanceCompute()
-        {   }
+        {
+	    objectCount--;
+	}
 
         int compute()
         {
-            if (right - left < 10000)
+            if ((right - left < 10000) || (objectCount.load() > 128))
             {
                 run();
                 return 0;
@@ -579,7 +604,7 @@ namespace utils
         Eigen::VectorXd res;
         Eigen::VectorXd& vec;
         const Eigen::Map<Eigen::MatrixXd>& pMatrix;
-
+        static std::atomic<int> objectCount;
 
         void run()
         {
@@ -591,22 +616,26 @@ namespace utils
     public:
         ParallelDistanceComputeNP(const Eigen::Map<Eigen::MatrixXd>& pM, Eigen::VectorXd& v) : vec(v), pMatrix(pM)
         {
+	    objectCount++;
             this->left = 0;
             this->right = pM.cols();
             compute();
         }
         ParallelDistanceComputeNP(size_t left, size_t right, const Eigen::Map<Eigen::MatrixXd>& pM, Eigen::VectorXd& v) : vec(v), pMatrix(pM)
         {
+	    objectCount++;
             this->left = left;
             this->right = right;
         }
 
         ~ParallelDistanceComputeNP()
-        {   }
+        {
+	    objectCount--;
+	}
 
         int compute()
         {
-            if (right - left < 10000)
+            if ((right - left < 10000) || (objectCount.load() > 128))
             {
                 run();
                 return 0;
@@ -644,7 +673,7 @@ namespace utils
         Eigen::VectorXd res;
         Eigen::VectorXd& vec;
         const std::vector<SuffStatsOne>& clusters;
-
+        static std::atomic<int> objectCount;
 
         void run()
         {
@@ -656,22 +685,26 @@ namespace utils
     public:
         ParallelDistanceComputeCluster(const std::vector<SuffStatsOne>& cL, Eigen::VectorXd& v) : vec(v), clusters(cL)
         {
+	    objectCount++;
             this->left = 0;
             this->right = cL.size();
             compute();
         }
         ParallelDistanceComputeCluster(size_t left, size_t right, const std::vector<SuffStatsOne>& cL, Eigen::VectorXd& v) : vec(v), clusters(cL)
         {
+	    objectCount++;
             this->left = left;
             this->right = right;
         }
 
         ~ParallelDistanceComputeCluster()
-        {   }
+        {
+            objectCount--;
+	}
 
         int compute()
         {
-            if (right - left < 10000)
+            if ((right - left < 10000) || (objectCount.load() > 128))
             {
                 run();
                 return 0;

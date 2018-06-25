@@ -15,9 +15,9 @@ gt = time.time
 np.random.seed(seed=3)
 
 print('Generate random points')
-N=10000
-K=100
-D=1000
+N=7000
+K=10
+D=128
 means = 20*np.random.rand(K,D) - 10
 x = np.vstack([np.random.randn(N,D) + means[i] for i in range(K)])
 np.random.shuffle(x)
@@ -34,62 +34,61 @@ y = np.require(y, requirements=['A', 'C', 'O', 'W'])
 
 print('======== Checks for Search ==========')
 
-#t = gt()
-#ct = CoverTree.from_matrix(x)
-#b_t = gt() - t
-##ct.display()
-#print("Building time:", b_t, "seconds")
+t = gt()
+ct = CoverTree.from_matrix(x, use_multi_core=False)
+b_t = gt() - t
+#ct.display()
+print("Building time:", b_t, "seconds")
     
-#print("Test covering: ", ct.test_covering())
+print("Test covering: ", ct.test_covering())
 
-#print('Test Nearest Neighbour: ')
-#t = gt()
-#a = ct.NearestNeighbour(y)
-#b_t = gt() - t
-#print("Query time:", b_t, "seconds")
-#nbrs = NearestNeighbors(n_neighbors=1, algorithm='brute').fit(x)
-#distances, indices = nbrs.kneighbors(y)
-#b = np.squeeze(x[indices])
-#if np.all(a==b):
-#    print("Test for Nearest Neighbour passed")
-#else:
-#    print("Test for Nearest Neighbour failed")
-#print()
+print('Test Nearest Neighbour: ')
+t = gt()
+idx1, _ = ct.NearestNeighbour(y, use_multi_core=False)
+b_t = gt() - t
+print("Query time:", b_t, "seconds")
+nbrs = NearestNeighbors(n_neighbors=1, algorithm='brute').fit(x)
+_, idx2 = nbrs.kneighbors(y)
+if np.all(idx1==np.squeeze(idx2)):
+    print("Test for Nearest Neighbour passed")
+else:
+    print("Test for Nearest Neighbour failed")
+print()
 
-#pdb.set_trace()
+print('Test k-Nearest Neighbours (k=3): ')
+t = gt()
+idx1, _ = ct.kNearestNeighbours(y,3, use_multi_core=False)
+b_t = gt() - t
+print("Query time:", b_t, "seconds")
+nbrs = NearestNeighbors(n_neighbors=3, algorithm='ball_tree').fit(x)
+_, idx2 = nbrs.kneighbors(y)
+if np.all(idx1==np.squeeze(idx2)):
+    print("Test for k-Nearest Neighbours passed")
+else:
+    print("Test for k-Nearest Neighbours failed")
+print()
 
-#print('Test k-Nearest Neighbours (k=3): ')
-#t = gt()
-#a = ct.kNearestNeighbours(y,3)
-#b_t = gt() - t
-#print("Query time:", b_t, "seconds")
-#nbrs = NearestNeighbors(n_neighbors=3, algorithm='brute').fit(x)
-#distances, indices = nbrs.kneighbors(y)
-#if np.all(a==x[indices]):
-#    print("Test for k-Nearest Neighbours passed")
-#else:
-#    print("Test for k-Nearest Neighbours failed")
-#print()
-#
-#print('Test pickling: ')
-#s = ct.serialize()
-#f_string = pickle.dumps(ct, protocol=4)
-#print('string got', len(f_string))
-#with open('tree.dat', 'wb') as f:
-#    pickle.dump(ct, f, protocol=4)
-#ct = None
-#ct_new = CoverTree.from_string(s)
-#ct_new = pickle.loads(f_string)
-#with open('tree.dat', 'rb') as f:
-#   ct_new =  pickle.load(f)
+print('Test pickling: ')
+s = ct.serialize()
+f_string = pickle.dumps(ct, protocol=4)
+print('string got', len(f_string))
+with open('tree.dat', 'wb') as f:
+    pickle.dump(ct, f, protocol=4)
+ct = None
+ct_new = CoverTree.from_string(s)
+ct_new = pickle.loads(f_string)
+with open('tree.dat', 'rb') as f:
+   ct_new =  pickle.load(f)
 #ct_new.display()
-#print("Tree reconstructed")
-#a = ct_new.kNearestNeighbours(y,3)
-#if np.all(a==x[indices]):
-#    print("Test for pickling passed")
-#else:
-#    print("Test for pickling failed")
+print("Tree reconstructed")
+idx1, _ = ct_new.kNearestNeighbours(y,3)
+if np.all(idx1==np.squeeze(idx2)):
+    print("Test for pickling passed")
+else:
+    print("Test for pickling failed")
     
+pdb.set_trace()
+
 print('======== Checks for Clustering ==========')
 print('Building clustering data structures')
 skm = sKMeans(K, 'k-means++', 1, 10, verbose=0)

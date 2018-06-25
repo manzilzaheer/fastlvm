@@ -14,8 +14,8 @@ class CoverTree(object):
         return (CoverTree.from_string, (buff,))
 
     @classmethod
-    def from_matrix(cls, points, trunc=-1):
-        ptr = covertreec.new(points, trunc)
+    def from_matrix(cls, points, trunc=-1, use_multi_core=True):
+        ptr = covertreec.new(points, trunc, use_multi_core)
         return cls(ptr)
         
     @classmethod
@@ -29,15 +29,14 @@ class CoverTree(object):
     def remove(self, point):
         return covertreec.remove(self.this, point)
 
-    def NearestNeighbour(self, points):
-        return covertreec.NearestNeighbour(self.this, points)
+    def NearestNeighbour(self, points, use_multi_core=True, return_points=False):
+        return covertreec.NearestNeighbour(self.this, points, use_multi_core, return_points)
 
-    def kNearestNeighbours(self, points, k=10):
-        return covertreec.kNearestNeighbours(self.this, points, k)
+    def kNearestNeighbours(self, points, k=10, use_multi_core=True, return_points=False):
+        return covertreec.kNearestNeighbours(self.this, points, k, use_multi_core, return_points)
         
-    def range(self, points, r=1.0):
-        print("Sorry not implemented yet!")
-        return None
+    def RangeSearch(self, points, r=1.0, use_multi_core=True, return_points=False):
+        return covertreec.RangeSearch(self.this, points, r, use_multi_core, return_points)
         
     def serialize(self):
         return covertreec.serialize(self.this)

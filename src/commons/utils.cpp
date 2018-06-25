@@ -42,3 +42,12 @@ size_t* utils::KMeanspp(const Eigen::MatrixXd& points, unsigned K)
     delete[] dist;
     return seeds;
 }
+
+std::atomic<int> utils::ParallelAddList::objectCount(0);
+std::atomic<int> utils::ParallelAddMatrix::objectCount(0);
+std::atomic<int> utils::ParallelAddMatrixNP::objectCount(0);
+std::atomic<int> utils::ParallelAddClusters::objectCount(0);
+std::atomic<int> utils::ParallelDistanceComputeList::objectCount(0);
+std::atomic<int> utils::ParallelDistanceCompute::objectCount(0);
+std::atomic<int> utils::ParallelDistanceComputeNP::objectCount(0);
+std::atomic<int> utils::ParallelDistanceComputeCluster::objectCount(0);
