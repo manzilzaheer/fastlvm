@@ -20,7 +20,8 @@ class Params(params.Params):
 
 class HyperParams(hyperparams.Hyperparams):
     trunc = hyperparams.UniformInt(lower=-1, upper=100,default=-1,semantic_types=['https://metadata.datadrivendiscovery.org/types/TuningParameter'],description='Level of truncation of the tree. -1 means no truncation.')
-    
+    k = hyperparams.UniformInt(lower=1, upper=10,default=3,semantic_types=['https://metadata.datadrivendiscovery.org/types/TuningParameter'],description='Number of neighbors.')
+
 class CoverTree(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams]):
 
     metadata = metadata_base.PrimitiveMetadata({
@@ -51,6 +52,7 @@ class CoverTree(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperP
         #super(CoverTree, self).__init__()
         self._this = None
         self._trunc = hyperparams['trunc']
+        self._k = hyperparams['k']
         self._training_inputs = None  # type: Inputs
         self._fitted = False
         self.hyperparams = hyperparams
@@ -97,7 +99,7 @@ class CoverTree(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperP
         """
         return self.fitted
 
-    def produce(self, *, inputs: Inputs, k: int) -> base.CallResult[Outputs]:
+    def produce(self, *, inputs: Inputs) -> base.CallResult[Outputs]:
         """
         Finds the closest points for the given set of test points using the tree constructed.
 
@@ -115,6 +117,7 @@ class CoverTree(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperP
         if self._this is None:
             raise ValueError('Fit model first')
 
+        k = self._k
         if k == 1:
             results, _ = covertreec.NearestNeighbour(self._this, inputs.values)
         else:
@@ -125,7 +128,7 @@ class CoverTree(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperP
 
         return base.CallResult(output)
 
-    def multi_produce(self, *, produce_methods: typing.Sequence[str], inputs: Inputs, timeout: float = None, iterations: int = None, k: int) -> base.MultiCallResult:
+    def multi_produce(self, *, produce_methods: typing.Sequence[str], inputs: Inputs, timeout: float = None, iterations: int = None) -> base.MultiCallResult:
 	    pass
 
     def get_params(self) -> Params:
@@ -155,17 +158,3 @@ OB
         """
         self._this = covertreec.deserialize(params['tree'])
 
-    def set_random_seed(self, *, seed: int) -> None:
-        """
-        NOT SUPPORTED YET
-        Sets a random seed for all operations from now on inside the primitive.
-
-        By default it sets numpy's and Python's random seed.
-
-        Parameters
-        ----------
-        seed : int
-            A random seed to use.
-        """
-
-        raise NotImplementedError("Not supported yet")
