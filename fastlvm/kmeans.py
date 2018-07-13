@@ -23,18 +23,18 @@ class HyperParams(hyperparams.Hyperparams):
     iters = hyperparams.UniformInt(lower=1, upper=10000, default=100, semantic_types=['https://metadata.datadrivendiscovery.org/types/TuningParameter'], description='The number of iterations of the Lloyd’s algorithm for K-Means clustering.')
     initialization = hyperparams.Enumeration[str](values=['random', 'firstk', 'kmeanspp', 'covertree'], default='covertree', semantic_types=['https://metadata.datadrivendiscovery.org/types/TuningParameter'], description="'random': choose k observations (rows) at random from data for the initial centroids. 'kmeanspp' : selects initial cluster centers by finding well spread out points using cover trees to speed up convergence. 'covertree' : selects initial cluster centers by sampling to speed up convergence.")
     
-def init_covertree(k: int, points: Inputs) -> Outputs:
+def init_covertree(k: int, points):
     import covertreec
     trunc = 3
-    ptr = covertreec.new(points.values, trunc)
+    ptr = covertreec.new(points, trunc)
     #covertreec.display(ptr)
     seeds = covertreec.spreadout(ptr, k)
     covertreec.delete(ptr)
     return seeds
     
-def init_kmeanspp(k: int, points: Inputs) -> Outputs:
+def init_kmeanspp(k: int, points):
     import utilsc
-    seed_idx = utilsc.kmeanspp(k, points.values)
+    seed_idx = utilsc.kmeanspp(k, points)
     seeds = points[seed_idx]
     return seeds
     
@@ -83,7 +83,7 @@ class KMeans(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperPara
         if self._this is not None:
             kmeansc.delete(self._this)
 
-    def set_training_data(self, *, training_inputs: Inputs) -> None:
+    def set_training_data(self, *, inputs: Inputs) -> None:
         """
         Sets training data for KMeans.
 
@@ -92,8 +92,9 @@ class KMeans(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperPara
         training_inputs : Inputs
             A NxD DataFrame of data points for training.
         """
-
-        self._training_inputs = training_inputs.values
+        training_inputs = inputs.values
+        self._training_inputs = training_inputs
+        self._validation_inputs = training_inputs
 
         initial_centres = None
         if self._initialization == 'random':
@@ -121,7 +122,7 @@ class KMeans(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperPara
         if self._training_inputs is None:
             raise ValueError("Missing training data.")
 
-        kmeansc.fit(self._this, self._training_inputs, self._training_inputs)
+        kmeansc.fit(self._this, self._training_inputs, self._validation_inputs)
         self._fitted = True
 
     def get_call_metadata(self) -> bool:
