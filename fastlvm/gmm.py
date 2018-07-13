@@ -11,8 +11,9 @@ import d3m.metadata
 from d3m.metadata import hyperparams, base as metadata_base
 from d3m.metadata import params
 
-Inputs = container.ndarray  # type: np.ndarray
-Outputs = container.ndarray  # type: np.ndarray
+Inputs = container.DataFrame  # type: DataFrame
+Outputs = container.DataFrame  # type: DataFrame
+OutputCenters = container.ndarray  # type: np.ndarray
 
 class Params(params.Params):
     mixture_parameters: bytes  # Byte stream represening coordinates of cluster centers.
@@ -90,13 +91,13 @@ class GMM(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams]
         Parameters
         ----------
         training_inputs : Inputs
-            A NxD matrix of data points for training.
+            A NxD DataFrame of data points for training.
         validation_inputs : Inputs
-            A N'xD matrix of data points for validaton.
+            A N'xD DataFrame of data points for validaton.
         """
 
-        self._training_inputs = training_inputs
-        self._validation_inputs = validation_inputs
+        self._training_inputs = training_inputs.values
+        self._validation_inputs = validation_inputs.values
 
         initial_centres = None
         if self._initialization == 'random':
@@ -148,7 +149,7 @@ class GMM(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams]
         Parameters
         ----------
         inputs : Inputs
-            A NxD matrix of data points.
+            A NxD DataFrame of data points.
 
         Returns
         -------
@@ -156,7 +157,11 @@ class GMM(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams]
             The index of the cluster each sample belongs to.
 
         """
-        return base.CallResult(gmmc.predict(self._this, inputs))
+        results = gmmc.predict(self._this, inputs.values)
+        output = container.DataFrame(results, generate_metadata=False, source=self)
+        # output.metadata = inputs.metadata.clear(source=self, for_value=output, generate_metadata=True)
+
+        return base.CallResult(output)
 
     def evaluate(self, *, inputs: Inputs) -> float:
         """
@@ -165,16 +170,16 @@ class GMM(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams]
         Parameters
         ----------
         inputs : Inputs
-            A NxD matrix of data points.
+            A NxD DataFrame of data points.
 
         Returns
         -------
         score : float
             The log-likelihood on the supplied points.
         """
-        return gmmc.evaluate(self._this, inputs)
+        return gmmc.evaluate(self._this, inputs.values)
  
-    def produce_centers(self) -> Outputs:
+    def produce_centers(self) -> OutputCenters:
         """
         Get current cluster means and variances for this model.
 

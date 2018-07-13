@@ -11,8 +11,9 @@ import d3m.metadata
 from d3m.metadata import hyperparams, base as metadata_base
 from d3m.metadata import params
 
-Inputs = container.ndarray  # type: np.ndarray
-Outputs = container.ndarray  # type: np.ndarray
+Inputs = container.DataFrame  # type: DataFrame
+Outputs = container.DataFrame  # type: DataFrame
+OutputCenters = container.ndarray  # type: np.ndarray
 
 class Params(params.Params):
     cluster_centers: bytes  # Byte stream represening coordinates of cluster centers.
@@ -25,7 +26,7 @@ class HyperParams(hyperparams.Hyperparams):
 def init_covertree(k: int, points: Inputs) -> Outputs:
     import covertreec
     trunc = 3
-    ptr = covertreec.new(points, trunc)
+    ptr = covertreec.new(points.values, trunc)
     #covertreec.display(ptr)
     seeds = covertreec.spreadout(ptr, k)
     covertreec.delete(ptr)
@@ -33,7 +34,7 @@ def init_covertree(k: int, points: Inputs) -> Outputs:
     
 def init_kmeanspp(k: int, points: Inputs) -> Outputs:
     import utilsc
-    seed_idx = utilsc.kmeanspp(k, points)
+    seed_idx = utilsc.kmeanspp(k, points.values)
     seeds = points[seed_idx]
     return seeds
     
@@ -89,13 +90,13 @@ class KMeans(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperPara
         Parameters
         ----------
         training_inputs : Inputs
-            A NxD matrix of data points for training.
+            A NxD DataFrame of data points for training.
         validation_inputs : Inputs
-            A N'xD matrix of data points for validaton.
+            A N'xD DataFrame of data points for validaton.
         """
 
-        self._training_inputs = training_inputs
-        self._validation_inputs = validation_inputs
+        self._training_inputs = training_inputs.values
+        self._validation_inputs = validation_inputs.values
 
         initial_centres = None
         if self._initialization == 'random':
@@ -153,7 +154,11 @@ class KMeans(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperPara
             The index of the cluster each sample belongs to.
 
         """
-        return base.CallResult(kmeansc.predict(self._this, inputs))
+        results = kmeansc.predict(self._this, inputs.values)
+        output = container.DataFrame(results, generate_metadata=False, source=self)
+        # output.metadata = inputs.metadata.clear(source=self, for_value=output, generate_metadata=True)
+
+        return base.CallResult(output)
 
     def evaluate(self, *, inputs: Inputs) -> float:
         """
@@ -169,9 +174,9 @@ class KMeans(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperPara
         score : float
             The score (-ve of K-Means objective value) on the supplied points.
         """
-        return kmeansc.evaluate(self._this, inputs)
-        
-    def produce_centers(self) -> Outputs:
+        return kmeansc.evaluate(self._this, inputs.value)
+
+    def produce_centers(self) -> OutputCenters:
         """
         Get current cluster centers for this model.
 

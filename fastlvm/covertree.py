@@ -12,8 +12,8 @@ from d3m.metadata import hyperparams, base as metadata_base
 from d3m.metadata import params
 
 
-Inputs = container.ndarray  # type: np.ndarray
-Outputs = container.ndarray  # type: np.ndarray
+Inputs = container.DataFrame  # type: DataFrame
+Outputs = container.DataFrame  # type: DataFrame
 
 class Params(params.Params):
     tree: bytes # Byte stream represening the tree.
@@ -66,10 +66,10 @@ class CoverTree(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperP
         Parameters
         ----------
         inputs : Inputs
-            A NxD matrix of data points for training.
+            A NxD DataFrame of data points for training.
         """
 
-        self._training_inputs = inputs
+        self._training_inputs = inputs.values
         self._fitted = False
         
     def fit(self, *, timeout: float = None, iterations: int = None) -> None:
@@ -104,7 +104,7 @@ class CoverTree(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperP
         Parameters
         ----------
         inputs : Inputs
-            A NxD matrix of data points.
+            A NxD DataFrame of data points.
 
         Returns
         -------
@@ -116,11 +116,14 @@ class CoverTree(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperP
             raise ValueError('Fit model first')
 
         if k == 1:
-            results, _ = covertreec.NearestNeighbour(self._this, inputs)
+            results, _ = covertreec.NearestNeighbour(self._this, inputs.values)
         else:
-            results, _ = covertreec.kNearestNeighbours(self._this, inputs, k)
-        
-        return base.CallResult(results)
+            results, _ = covertreec.kNearestNeighbours(self._this, inputs.values, k)
+
+        output = container.DataFrame(results, generate_metadata=False, source=self)
+        # output.metadata = inputs.metadata.clear(source=self, for_value=output, generate_metadata=True)
+
+        return base.CallResult(output)
 
     def multi_produce(self, *, produce_methods: typing.Sequence[str], inputs: Inputs, timeout: float = None, iterations: int = None, k: int) -> base.MultiCallResult:
 	    pass
