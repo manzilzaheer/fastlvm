@@ -83,7 +83,7 @@ class KMeans(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperPara
         if self._this is not None:
             kmeansc.delete(self._this)
 
-    def set_training_data(self, *, training_inputs: Inputs, validation_inputs: Inputs) -> None:
+    def set_training_data(self, *, training_inputs: Inputs) -> None:
         """
         Sets training data for KMeans.
 
@@ -91,12 +91,9 @@ class KMeans(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperPara
         ----------
         training_inputs : Inputs
             A NxD DataFrame of data points for training.
-        validation_inputs : Inputs
-            A N'xD DataFrame of data points for validaton.
         """
 
         self._training_inputs = training_inputs.values
-        self._validation_inputs = validation_inputs.values
 
         initial_centres = None
         if self._initialization == 'random':
@@ -124,7 +121,7 @@ class KMeans(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperPara
         if self._training_inputs is None:
             raise ValueError("Missing training data.")
 
-        kmeansc.fit(self._this, self._training_inputs, self._validation_inputs)
+        kmeansc.fit(self._this, self._training_inputs, self._training_inputs)
         self._fitted = True
 
     def get_call_metadata(self) -> bool:
@@ -214,19 +211,4 @@ class KMeans(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperPara
             A named tuple of parameters.
         """
         self._this = kmeansc.deserialize(params['cluster_centers'])
-
-    def set_random_seed(self, *, seed: int) -> None:
-        """
-        NOT SUPPORTED YET
-        Sets a random seed for all operations from now on inside the primitive.
-
-        By default it sets numpy's and Python's random seed.
-
-        Parameters
-        ----------
-        seed : int
-            A random seed to use.
-        """
-
-        raise NotImplementedError("Not supported yet")
 
