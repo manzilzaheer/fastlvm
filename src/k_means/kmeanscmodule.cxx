@@ -127,9 +127,12 @@ static PyObject *kmeansc_predict(PyObject *self, PyObject *args) {
 
   obj = reinterpret_cast< model * >(int_ptr);
   std::vector<unsigned> results = obj->predict(queryPts);
+  unsigned* new_ptr = new unsigned[numPoints];
+  for(int i =0; i < numPoints; i++)
+    new_ptr[i] = results[i];
 
   npy_intp dims[1] = {numPoints};
-  PyObject *out_array = PyArray_SimpleNewFromData(1, dims, NPY_UINT, results.data());
+  PyObject *out_array = PyArray_SimpleNewFromData(1, dims, NPY_UINT, new_ptr);
   PyArray_ENABLEFLAGS((PyArrayObject *)out_array, NPY_ARRAY_OWNDATA);
 
   //Py_INCREF(out_array);
