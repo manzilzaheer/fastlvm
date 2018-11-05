@@ -33,7 +33,7 @@ class LDA(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams]
         "name": "Latent Dirichlet Allocation Topic Modelling",
         "description": "This class provides functionality for unsupervised inference on latent Dirichlet allocation, which is a probabilistic topic model of corpora of documents which seeks to represent the underlying thematic structure of the document collection. They have emerged as a powerful new technique of finding useful structure in an unstructured collection as it learns distributions over words. The high probability words in each distribution gives us a way of understanding the contents of the corpus at a very high level. In LDA, each document of the corpus is assumed to have a distribution over K topics, where the discrete topic distributions are drawn from a symmetric dirichlet distribution. Standard packages, like those in scikit learn are inefficient in addition to being limited to a single machine. Whereas our underlying C++ implementation can be distributed to run on multiple machines. To enable the distribution through python interface is work in progress. The API is similar to sklearn.decomposition.LatentDirichletAllocation.",
         "python_path": "d3m.primitives.cmu.fastlvm.LDA",
-        "primitive_family": "CLUSTERING",
+        "primitive_family": metadata_base.PrimitiveFamily.CLUSTERING,
         "algorithm_types": [ "LATENT_DIRICHLET_ALLOCATION" ],
         "keywords": ["large scale LDA", "topic modeling", "clustering"],
         "source": {
