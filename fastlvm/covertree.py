@@ -129,7 +129,11 @@ class CoverTree(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperP
         return base.CallResult(output)
 
     def multi_produce(self, *, produce_methods: typing.Sequence[str], inputs: Inputs, timeout: float = None, iterations: int = None) -> base.MultiCallResult:
-	    pass
+        output = self.produce(inputs=inputs)
+        result = {}
+        for method in produce_methods:
+            result[method] = output.value
+        return base.MultiCallResult(result)
 
     def get_params(self) -> Params:
         """
