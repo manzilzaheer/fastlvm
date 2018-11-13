@@ -2,14 +2,14 @@ import time
 import pickle
 import numpy as np
 import scipy as sc
-#from fastlvm import CoverTree, KMeans, GMM, LDA, GLDA, HDP
+from fastlvm import CoverTree, KMeans, GMM, LDA, GLDA, HDP
 from fastlvm.covertree import HyperParams as onehp
 from fastlvm.kmeans import HyperParams as twohp
 from fastlvm.gmm import HyperParams as threehp
 from fastlvm.lda import HyperParams as fourhp
 from fastlvm.glda import HyperParams as fivehp
 from fastlvm.hdp import HyperParams as sixhp
-from d3m.primitives.cmu.fastlvm import CoverTree, KMeans, GMM, LDA, GLDA, HDP
+# from d3m.primitives.cmu.fastlvm import CoverTree, KMeans, GMM, LDA, GLDA, HDP
 from fastlvm import read_corpus
 from sklearn.neighbors import NearestNeighbors
 from sklearn.cluster import KMeans as sKMeans
