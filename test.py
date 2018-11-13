@@ -35,7 +35,7 @@ y = np.require(y, requirements=['A', 'C', 'O', 'W'])
 #pdb.set_trace()
 
 print('======== Checks for Search ==========')
-hp = onehp(trunc=-1)
+hp = onehp(trunc=-1, k=1)
 ct = CoverTree(hyperparams=hp)
 ct.set_training_data(inputs=pd.DataFrame(x))
 t = gt()
