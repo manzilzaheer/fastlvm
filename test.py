@@ -14,6 +14,7 @@ from fastlvm import read_corpus
 from sklearn.neighbors import NearestNeighbors
 from sklearn.cluster import KMeans as sKMeans
 from sklearn.mixture import GaussianMixture
+import pandas as pd
 
 import pdb
 
@@ -36,7 +37,7 @@ y = np.require(y, requirements=['A', 'C', 'O', 'W'])
 print('======== Checks for Search ==========')
 hp = onehp(trunc=-1)
 ct = CoverTree(hyperparams=hp)
-ct.set_training_data(inputs=x)
+ct.set_training_data(inputs=pd.DataFrame(x))
 t = gt()
 ct.fit()
 b_t = gt() - t
@@ -44,9 +45,9 @@ print("Building time:", b_t, "seconds")
     
 print('Test Nearest Neighbour: ')
 t = gt()
-a = ct.produce(inputs=y, k=1)
+a = ct.produce(inputs=pd.DataFrame(y))
 b_t = gt() - t
-a = np.squeeze(x[a])
+a = np.squeeze(x[a.value])
 print("Query time:", b_t, "seconds")
 nbrs = NearestNeighbors(n_neighbors=1, algorithm='brute').fit(x)
 distances, indices = nbrs.kneighbors(y)
