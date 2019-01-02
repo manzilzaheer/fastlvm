@@ -161,6 +161,14 @@ class GMM(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams]
 
         return base.CallResult(output)
 
+    def multi_produce(self, *, produce_methods: typing.Sequence[str], inputs: Inputs, timeout: float = None,
+                      iterations: int = None) -> base.MultiCallResult:
+        output = self.produce(inputs=inputs)
+        result = {}
+        for method in produce_methods:
+            result[method] = output.value
+        return base.MultiCallResult(result)
+
     def evaluate(self, *, inputs: Inputs) -> float:
         """
         Finds the score of learned model on a set of test points
