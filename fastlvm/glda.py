@@ -22,7 +22,6 @@ class Params(params.Params):
 class HyperParams(hyperparams.Hyperparams):
     k = hyperparams.UniformInt(lower=1, upper=10000, default=10, semantic_types=['https://metadata.datadrivendiscovery.org/types/TuningParameter'], description='The number of clusters to form as well as the number of centroids to generate.')
     iters = hyperparams.UniformInt(lower=1, upper=10000, default=100, semantic_types=['https://metadata.datadrivendiscovery.org/types/TuningParameter'], description='The number of iterations of inference.')
-    vocab = hyperparams.UniformInt(lower=1, upper=1000000, default=1000, semantic_types=['https://metadata.datadrivendiscovery.org/types/TuningParameter'], description='Vocab size.')
 
     
 class GLDA(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams]):
@@ -57,8 +56,7 @@ class GLDA(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams
         self._this = None
         self._k = hyperparams['k']
         self._iters = hyperparams['iters']
-        self._vocab = hyperparams['vocab']
-                    
+
         self._training_inputs = None  # type: Inputs
         self._validation_inputs = None # type: Inputs
         self._fitted = False
@@ -88,7 +86,7 @@ class GLDA(UnsupervisedLearnerPrimitiveBase[Inputs, Outputs, Params, HyperParams
         self._training_inputs = training_inputs
         self._validation_inputs = validation_inputs
 
-        vocab = [''.join(['w',str(i)]) for i in range(self._vocab)]
+        vocab = [''.join(['w',str(i)]) for i in range(len(vectors))]
         self._this = gldac.new(self._k, self._iters, vocab, vectors)
         
         self._fitted = False
